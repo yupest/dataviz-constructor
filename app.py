@@ -1,17 +1,13 @@
 from dash import Dash, dcc, html, Input, Output, State, callback, dash_table, no_update, ctx
 from dash.exceptions import PreventUpdate
 import dash_draggable
-import plotly.express as px
 import pandas as pd
-import base64
-import io
 import json
-import numpy as np
 from dash.dependencies import MATCH, ALL
-import dash_daq as daq
 import dash_bootstrap_components as dbc
-from dash_holoniq_wordcloud import DashWordcloud
+import dash_daq as daq
 import uuid
+from callbacks import register_all_callbacks
 
 INPUT_STYLE = {
      'width': '100%'
@@ -241,57 +237,9 @@ app.layout = html.Div([
     ], style = tabs_styles)
 ])
 
-######################################## processing the data ########################################
-def parse_contents(contents, filename):
-    df_uploaded = pd.DataFrame()
+register_all_callbacks(app)
 
-    if contents:
-        try:
-            content_type, content_string = contents.split(',')
-            decoded = base64.b64decode(content_string)
-
-            if 'csv' in filename:
-                df_uploaded = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
-            elif 'xls' in filename:
-                df_uploaded = pd.read_excel(io.BytesIO(decoded))
-            elif 'json' in filename:
-                df_uploaded = pd.read_json(io.StringIO(decoded.decode('utf-8')))
-
-        except Exception as e:
-            print(f'parse content for {filename}', e)
-
-    return df_uploaded
-
-@callback([Output('raw-data', 'data'),
-           Output('storage', 'data', allow_duplicate=True)],
-           Input('upload-data', 'contents'),  # Триггер
-           State('upload-data', 'filename'),  # Дополнительные данные
-           prevent_initial_call=True
-)
-def set_data(contents, filename):
-    # print('--------------------set_data------------------')
-    json_data = {
-        'filename': filename,
-        'data': '[]',
-        'hidden_columns': []
-    }
-    if not contents:
-        # print('contents')
-        return json_data, None
-        # raise PreventUpdate
-    try:
-        df = parse_contents(contents, filename)
-        cols_exist = df.columns.to_list()
-        # print(cols_exist)
-        df['NA'] = (df.isna().any(axis=1) | (df == '').any(axis=1)).astype(int)
-        df = df[['NA']+cols_exist]
-        json_data['data'] = df.to_json(orient='records')
-    except Exception as e:
-        print(f"Error: {e}")
-    # print('data: ', json_data['data'][:50])
-    return json_data, None
-
-######################################## processing the table ########################################
+######################################## processing the data table ########################################
 
 @callback(Output('data-file', 'data', allow_duplicate=True),
           Output('menu-data', 'children'),
@@ -556,7 +504,7 @@ def download_data(download_btn, encode_btn, hidden_columns, data, raw_data, file
         if 'encoder-btn' == ctx.triggered_id:
             for col in df.columns:
                 if df[col].dtype=='object':
-                    df[col] = pd.factorize(df[col])[0]
+                    df[col] = df[col].astype('category').cat.codes
             new = '_encode.'
         name_list = raw_data['filename'].split('.')
         if filename:
@@ -651,8 +599,6 @@ def load_tabs(stored_data, n_clicks):
         return [tab, append_sheet, drop_sheet], "Лист 1", default_data, [dashboard]
     else:
         # Восстанавливаем из хранилища
-        # number_sheet = int(stored_data["active_tab"].split(' ')[1])
-        # print('number_sheet', number_sheet)
         tabs = [tab for tab in stored_data["sheets"].values()]
         tabs.append(append_sheet)
         tabs.append(drop_sheet)
@@ -683,14 +629,12 @@ def set_active_tab(active_tab, tabs, menu, label, top, stored_data):
     # print('active_tab: ', ctx.triggered_id)
     if active_tab!='drop' and active_tab != 'add':
         stored_data['active_tab'] = active_tab
-        # number_sheet = int(active_tab.split(' ')[1])
         stored_data["sheets"] = {tab['props']['value']: tab for i, tab in enumerate(tabs[:-2])}
     elif active_tab=='add':
         if len(stored_data['sheets'])<10:
             number_tab = max([int(sheet.split()[1]) for sheet in stored_data['sheets'].keys()])+1
             # print('max_sheet', number_tab)
             new_tab_name = f"Лист {number_tab}"
-            # app.server.config["sheets"][new_tab_name] = []
 
             new_tab = dcc.Tab(label=new_tab_name, value=new_tab_name, id = {'index':f'sheet_{number_tab}', 'type':'sheet'}, children = [
                             dbc.Container([dcc.Dropdown( id= {'index':f'sheet_{number_tab}', 'type' : 'chart_type'}, placeholder = 'Выберите тип диаграммы',
@@ -709,14 +653,12 @@ def set_active_tab(active_tab, tabs, menu, label, top, stored_data):
                                 ]),
                             ], fluid=True)
                 ], style = tab_style, selected_style=tab_style)
-                # html.Button("Добавить график", id="add-chart")])
 
             tabs = tabs[:-2] + [new_tab]
             # print(tabs[0]['props']['value'])
             for tab in tabs[:-2]:
                 stored_data["sheets"][tab['props']['value']] = tab
             stored_data["sheets"][new_tab_name] = new_tab
-            # stored_data["sheets"] = {list(tab.keys())[0]: tab for tab in tabs}
             stored_data["active_tab"] = new_tab_name
             # print(stored_data)
 
@@ -744,55 +686,8 @@ def show_confirmation(n_clicks, stored_data):
     return no_update
 
 
-@callback(Output({'index': MATCH, 'type':'menu'}, 'children'),
-          Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
-          Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-          Input({'index': MATCH, 'type':'chart_type'}, 'value'),
-          State({'index': MATCH, 'type':'chart_type'}, 'id'),
-          State('df-table', 'data'),
-          State('df-table', 'hidden_columns'),
-          prevent_initial_call=True)
-def generate_menu(chart_type, chart_id, data, hidden_columns):
-
-    current_index = chart_id['index']
-    # print('generation', chart_type, current_index)
-
-    df = pd.read_json(json.dumps(data), orient='records')
-
-    # print(hidden_columns)
-    cols = ['NA'] if 'NA' in df.columns else []
-    cols += hidden_columns if hidden_columns else []
-    df = df.drop(columns = cols)
-
-    type_cols = dict()
-    for col in df.columns:
-        if df[col].dtype == 'object':
-            type_cols[col] = {'style': {'color':'Blue'}, 'type':'object'}
-        elif df[col].dtype == 'int64' and len(df[col].unique())<30:
-            type_cols[col] = {'style': {'color':'Orange'}, 'type':'discrete'}
-        else:
-            type_cols[col] = {'style': {'color':'Green'}, 'type':df[col].dtype}
-
-    list_color_cols = [{'options':{'label':html.Span([i], style=type_cols[i]['style']), 'value': i},
-                       'type': type_cols[i]['type']} for i in df.columns]
-
-    if chart_type == 'bar':
-        chart = get_menu_bar(list_color_cols, current_index)
-    elif chart_type == 'line':
-        chart = get_menu_line(list_color_cols, current_index)
-    elif chart_type == 'dot':
-        chart = get_menu_scatter(list_color_cols, current_index)
-    elif chart_type == 'pie':
-        chart = get_menu_pie(list_color_cols, current_index)
-    elif chart_type == 'table':
-        chart =  get_menu_table(list_color_cols, current_index)
-    elif chart_type == 'wordcloud':
-        chart = get_menu_wordcloud(list_color_cols, current_index)
-    elif chart_type=='text':
-        chart = get_menu_text(current_index)
-    style = {**tab_style, **custom_style_tab, 'background-image':f"url('https://github.com/yupest/nto/blob/master/src/{chart_type}.png?raw=true')"}
-    return chart, style, style
-######################################## processing the barchart ########################################
+######################################## menu getter functions ########################################
+# TODO: переместить эти функции в отдельный файл(ы)
 def get_menu_bar(list_color_cols, ind):
 
     return [html.Div([
@@ -831,108 +726,7 @@ def get_menu_bar(list_color_cols, ind):
 
         ]
     )]
-@callback(Output({'index':MATCH, 'type':'top-slider-bar'}, 'disabled'),
-          Input({'index':MATCH, 'type':'creation-top-bar'}, 'value'),
-          prevent_initial_call=True)
-def update_disabled_top_slider(value):
-    return value == []
 
-@callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
-          Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
-          Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-          Input({'index':MATCH, 'type':'name-bar'},'value'),
-          State({'index':MATCH, 'type':'sheet'},'value'),
-          prevent_initial_call=True)
-def rename_sheet_bar(name, value):
-    print(name)
-    style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/bar.png?raw=true')"}
-    if not name:
-        return value, style, style
-    else:
-
-        return name, style, style
-
-@callback(Output({'index':MATCH, 'type':'value_filter-bar'}, 'options'),
-          Input('df-table','data'),
-          Input({'index':MATCH, 'type':'filter-bar'}, 'value'),
-          prevent_initial_call=False)
-def set_options_bar(data, filter_col):
-    df = pd.read_json(json.dumps(data), orient='records')
-    if not filter_col:
-        return no_update
-    return df[filter_col].unique()
-
-@callback([Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
-           Output({'index':MATCH, 'type':'dashboard'}, 'children', allow_duplicate=True)],
-          [Input('data-file','data'),
-           Input('df-table','hidden_columns'),
-           Input({'index':MATCH, 'type':'xaxis'},'value'),
-           Input({'index':MATCH, 'type':'yaxis'}, 'value'),
-           Input({'index':MATCH, 'type':'agg-bar'}, 'value'),
-           Input({'index':MATCH, 'type':'name-bar'},'value'),
-           Input({'index':MATCH, 'type':'creation-top-bar'}, 'value'),
-           Input({'index':MATCH, 'type':'top-slider-bar'}, 'value'),
-           Input({'index':MATCH, 'type':'filter-bar'}, 'value'),
-           Input({'index':MATCH, 'type':'value_filter-bar'}, 'value'),
-           Input({'index':MATCH, 'type':'orientation'}, 'value')],
-          prevent_initial_call=True)
-def make_bar(data, hidden_columns, x_data, y_data, agg_data, barchart_name, creation_top, top_slider, filter_col, value_filter, orientation):
-
-    if not x_data or not y_data:
-        print('no', x_data, y_data)
-        return no_update, no_update
-
-    ### dictionary for an aggregation ###
-    d = {'sum': 'sum()', 'avg':'mean()', 'count': 'count()', 'countd': 'nunique()', 'min':'min()', 'max':'max()'}
-
-    df = pd.read_json(data['data'], orient='records')
-    cols = ['NA'] if 'NA' in df.columns else []
-    cols += hidden_columns if hidden_columns else []
-    df = df.drop(columns = cols)
-
-    if filter_col and value_filter:
-        df = df.loc[df[filter_col].isin(value_filter)]
-
-    nnn = df.groupby(x_data)[y_data]
-    r = {'nnn':nnn}
-    exec('nnn = nnn.'+d[agg_data], r)
-
-    y_axis = agg_data+'('+y_data[0]+')' if len(y_data)==1 else 'value'
-
-    o = None
-    if orientation:
-        o = 'h'
-        df_temp = r['nnn'].sort_values(y_data, ascending = True)
-        for y_col in y_data:
-            df_temp = df_temp.loc[~df_temp[y_col].isna()]
-
-        if creation_top:
-            df_temp = df_temp.tail(top_slider)
-
-        x = y_data[0] if len(y_data)==1 else y_data
-        y = df_temp.index
-    else:
-        df_temp = r['nnn'].sort_values(y_data, ascending = False)
-
-        if creation_top:
-            df_temp = df_temp[:top_slider]
-
-        x = df_temp.index
-        y = y_data[0] if len(y_data)==1 else y_data
-
-    bar_fig = px.bar(df_temp, x=x, y=y, labels={'y':y_axis,'x': x_data}, orientation = o)
-    bar_fig.update_layout(
-        title={
-            'text': barchart_name,
-            'y':0.94,
-            'x':0.5,
-            'xanchor': 'center',
-            'yanchor': 'top',
-        }
-    )
-    return dcc.Graph(figure=bar_fig), dcc.Graph(figure=bar_fig, responsive=True, style={"min-height":"0","flex-grow":"1"})
-
-######################################## processing the linechart ########################################
 def get_menu_line(list_color_cols, ind):
     return [html.Div([
         html.P("Ось X", style = P_STYLE),
@@ -966,74 +760,45 @@ def get_menu_line(list_color_cols, ind):
         ]
     )]
 
-@callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
-          Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
-          Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-          Input({'index':MATCH, 'type':'name-line'},'value'),
-          State({'index':MATCH, 'type':'sheet'},'value'),
-          prevent_initial_call=True)
-def rename_sheet_line(name, value):
-    print(name)
-    style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/line.png?raw=true')"}
-    if not name:
-        return value, style, style
-    else:
+def get_menu_wordcloud(list_color_cols, ind):
+    return [html.Div([
+                html.P("Текстовые данные", style = P_STYLE),
+                dcc.Dropdown(id={'index':ind, 'type':'column-wordcloud'},
+                            options=[x['options'] for x in list_color_cols if x['type']=='object'],
+                            persistence='local'),
+                dcc.Checklist(['Разбивать текст на слова'], id = {'index':ind, 'type':'explode-text-wordcloud'}, style = P_STYLE),
 
-        return name, style, style
+                html.P("Частота упоминаний слов:", style = P_STYLE),
+                dcc.Dropdown(id={'index':ind, 'type':'count-wordcloud'},
+                            options=[x['options'] for x in list_color_cols],
+                            persistence='local'),
+                html.P("Минимальная длина слова", style = P_STYLE),
+                dcc.Slider(min=1, max=5, step=1, value=3, id={'index':ind, 'type':'lenth-slider-wordcloud'}, marks=None,
+                            tooltip={"placement": "bottom", "always_visible": True}, persistence='local'),
+                html.P("Частота упоминаний от", style = P_STYLE),
+                dcc.Slider(min=1, max=10, step=1, value=3, id={'index':ind, 'type':'frequency-slider-wordcloud'}, marks=None,
+                            tooltip={"placement": "bottom", "always_visible": True}, persistence='local'),
+                html.P("Размер слов", style = P_STYLE),
+                dcc.Slider(min=1, max=5, step=0.5, value=1, id={'index':ind, 'type':'size-slider-wordcloud'}, marks=None,
+                            tooltip={"placement": "bottom", "always_visible": True}, persistence='local'),
+                html.P("Масштаб сетки", style = P_STYLE),
+                dcc.Slider(min=3, max=25, step=1, value=15, id={'index':ind, 'type':'grid-slider-wordcloud'}, marks=None,
+                            tooltip={"placement": "bottom", "always_visible": True}, persistence='local'),
+                html.P("Название листа", style = P_STYLE),
+                dcc.Input(id={'index':ind, 'type':"name-wordcloud"}, type="text", placeholder="Название", style = INPUT_STYLE, persistence='local'),
 
-@callback(Output({'index':MATCH, 'type':'value_filter-line'}, 'options'),
-          Input('df-table','data'),
-          Input({'index':MATCH, 'type':'filter-line'}, 'value'),
-          prevent_initial_call=False)
-def set_options_line(data, filter_col):
-    df = pd.read_json(json.dumps(data), orient='records')
-    if not filter_col:
-        return no_update
-    return df[filter_col].unique()
 
-@callback([Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
-           Output({'index':MATCH, 'type':'dashboard'}, 'children', allow_duplicate=True)],
-          [Input('df-table','data'),
-           Input('df-table','hidden_columns'),
-           Input({'index':MATCH, 'type':'xaxis'},'value'),
-           Input({'index':MATCH, 'type':'yaxis'}, 'value'),
-           Input({'index':MATCH, 'type':'agg-line'}, 'value'),
-           Input({'index':MATCH, 'type':'filter-line'}, 'value'),
-           Input({'index':MATCH, 'type':'value_filter-line'}, 'value'),
-           Input({'index':MATCH, 'type':'name-line'},'value')],
-          prevent_initial_call=True)
-def make_line(data, hidden_columns, x_data, y_data, agg_data, filter_col, value_filter, linechart_name):
-
-    if not x_data or not y_data:
-        return no_update, no_update
-    ### dictionary for an aggregation ###
-    d = {'sum': 'sum()', 'avg':'mean()', 'count': 'count()', 'countd': 'nunique()', 'min':'min()', 'max':'max()'}
-
-    df = pd.read_json(json.dumps(data), orient='records')
-    cols = ['NA'] if 'NA' in df.columns else []
-    cols += hidden_columns if hidden_columns else []
-    df = df.drop(columns = cols)
-
-    if filter_col and value_filter:
-        df = df.loc[df[filter_col].isin(value_filter)]
-
-    nnn = df.groupby(x_data)[y_data]
-    r = {'nnn':nnn}
-    exec('nnn = nnn.'+d[agg_data], r)
-
-    line_fig = px.line(r['nnn'], x=r['nnn'].index, y=y_data, color_discrete_sequence=px.colors.qualitative.Plotly)
-    line_fig.update_layout(
-        title={
-            'text': linechart_name,
-            'y':0.94,
-            'x':0.5,
-            'xanchor': 'center',
-            'yanchor': 'top'
-        }
-    )
-    return dcc.Graph(figure=line_fig), dcc.Graph(figure=line_fig, responsive=True, style={"min-height":"0","flex-grow":"1"})
-
-######################################## processing the dotchart ########################################
+                ]
+            ),
+            html.Div([
+                html.P("Выберите цвет", style = P_STYLE),
+                daq.ColorPicker(
+                id={'index':ind, 'type':'color-wordcloud'},
+                value=dict(hex='#000000'),
+                persistence='local',
+                style={'border':'0px'},
+            )], style={'height':500, 'margin-top':10})
+    ]
 
 def get_menu_scatter(list_color_cols, ind):
 
@@ -1067,92 +832,6 @@ def get_menu_scatter(list_color_cols, ind):
         dcc.Input(id={'index':ind, 'type':"name-dot"}, type="text", placeholder="Название", style = INPUT_STYLE, persistence='local'),
         ]
     )]
-
-@callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
-          Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
-          Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-          Input({'index':MATCH, 'type':'name-dot'},'value'),
-          State({'index':MATCH, 'type':'sheet'},'value'),
-          prevent_initial_call=True)
-def rename_sheet_dot(name, value):
-    style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/dot.png?raw=true')"}
-    if not name:
-        return value, style, style
-    else:
-
-        return name, style, style
-
-@callback([Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
-           Output({'index':MATCH, 'type':'dashboard'}, 'children', allow_duplicate=True)],
-            [Input('df-table','data'),
-             Input('df-table','hidden_columns'),
-            Input({'index':MATCH, 'type':'xaxis'},'value'),
-            Input({'index':MATCH, 'type':'yaxis'}, 'value'),
-            Input({'index':MATCH, 'type':'tooltip-dot'}, 'value'),
-            Input({'index':MATCH, 'type':'show-line-dot'},'value'),
-            Input({'index':MATCH, 'type':'size-dot'}, 'value'),
-            Input({'index':MATCH, 'type':'size-column-dot'}, 'value'),
-            Input({'index':MATCH, 'type':'color-dot'}, 'value'),
-            Input({'index':MATCH, 'type':'opacity-dot'}, 'value'),
-            Input({'index':MATCH, 'type':'name-dot'},'value')],
-            prevent_initial_call=True)
-
-def make_scatter(data, hidden_columns, x_data, y_data, tooltip, show_line, size_dot, size_data, color_data, opacity, dotchart_name):
-    df = pd.read_json(json.dumps(data), orient='records')
-    cols = ['NA'] if 'NA' in df.columns else []
-    cols += hidden_columns if hidden_columns else []
-    df = df.drop(columns = cols)
-
-
-    cols = tooltip if tooltip else []
-    for i in [x_data, y_data, color_data]:
-        if not pd.isna(i):
-            cols.append(i)
-            df = df.loc[~df[i].isna()]
-    # if cols!=[]:
-    #     df = df.groupby(cols)[[x for x in [x_data, y_data, size_data] if x is not None]].mean().reset_index()
-    dot_fig = px.scatter(df, x=x_data, y=y_data, size=size_data, hover_data=cols,
-                         color_discrete_sequence=px.colors.qualitative.Plotly, color=color_data, opacity = opacity/100)
-    dot_fig.update_layout(
-        title={
-            'text': dotchart_name,
-            'y':0.94,
-            'x':0.5,
-            'xanchor': 'center',
-            'yanchor': 'top'
-        })
-
-    # print(size_data)
-    if not size_data:
-        dot_fig.update_traces(marker_size=size_dot)
-
-    print('show_line', show_line)
-    if show_line:
-        print(color_data)
-        if color_data and df[color_data].dtype == 'object':
-            items = [df.loc[df[color_data]==item] for item in df[color_data].unique()]
-            colors = px.colors.qualitative.Plotly
-        else:
-            items = [df]
-            colors = ['gray']
-        for i, item in enumerate(items):
-            X = item[x_data]
-            Y = item[y_data]
-            cov_matrix = np.cov(X, Y)
-            a = cov_matrix[0, 1] / cov_matrix[0, 0]
-            b = np.mean(Y) - a * np.mean(X)
-
-            dot_fig.add_scatter(
-                x=np.linspace(min(X), max(X)),
-                y=a * np.linspace(min(X), max(X)) + b,
-                mode='lines',
-                name=f'y = {a:.3f}x + {b:.1f}',
-                hovertext = f'y = {a:.3f}x + {b:.1f}',
-                line=dict(color=colors[i])
-            )
-    return dcc.Graph(figure=dot_fig), dcc.Graph(figure=dot_fig, responsive=True, style={"min-height":"0","flex-grow":"1"})
-
-######################################## processing the piechart ########################################
 
 def get_menu_pie(list_color_cols, ind):
     return [html.Div([
@@ -1190,87 +869,6 @@ def get_menu_pie(list_color_cols, ind):
         ]
     )]
 
-@callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
-          Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
-          Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-          Input({'index':MATCH, 'type':'name-pie'},'value'),
-          State({'index':MATCH, 'type':'sheet'},'value'),
-          prevent_initial_call=True)
-def rename_sheet_pie(name, value):
-    # print(name)
-    style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/pie.png?raw=true')"}
-    if not name:
-        return value, style, style
-    else:
-
-        return name, style, style
-
-@callback(Output({'index':MATCH, 'type':'value_filter-pie'}, 'options'),
-          Input('df-table','data'),
-          Input({'index':MATCH, 'type':'filter-pie'}, 'value'),
-          prevent_initial_call=False)
-def set_options_pie(data, filter_col):
-    df = pd.read_json(json.dumps(data), orient='records')
-    if not filter_col:
-        return no_update
-    return df[filter_col].unique()
-
-@callback([Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
-           Output({'index':MATCH, 'type':'dashboard'}, 'children', allow_duplicate=True)],
-          [Input('df-table','data'),
-           Input('df-table','hidden_columns'),
-           Input({'index':MATCH, 'type':'xaxis'},'value'),
-           Input({'index':MATCH, 'type':'yaxis'}, 'value'),
-           Input({'index':MATCH, 'type':'sectors-slider'}, 'value'),
-           Input({'index':MATCH, 'type':'agg-pie'}, 'value'),
-           Input({'index':MATCH, 'type':'filter-pie'}, 'value'),
-           Input({'index':MATCH, 'type':'value_filter-pie'}, 'value'),
-           Input({'index':MATCH, 'type':'name-pie'},'value')],
-          prevent_initial_call=True)
-def make_pie(data, hidden_columns, x_data, y_data, sliderSectors, agg_data, filter_col, value_filter, piechart_name):
-
-        ### dictionary for an aggregation ###
-        d = {'sum': 'sum()', 'avg':'mean()', 'count': 'count()', 'countd': 'nunique()', 'min':'min()', 'max':'max()'}
-
-        df = pd.read_json(json.dumps(data), orient='records')
-        cols = ['NA'] if 'NA' in df.columns else []
-        cols += hidden_columns if hidden_columns else []
-        df = df.drop(columns = cols)
-
-        if filter_col and value_filter:
-            df = df.loc[df[filter_col].isin(value_filter)]
-
-        df_temp = df[[x_data, y_data]].groupby(by=x_data)
-        r = {'df_temp':df_temp}
-        exec('df_temp = df_temp.'+d[agg_data], r)
-
-        df_temp = r['df_temp']
-
-        if df_temp.shape[0] > sliderSectors:
-             df_temp = df_temp.sort_values(y_data, ascending = False).reset_index()
-             df_temp.loc[sliderSectors:, x_data] = 'Другое'
-             df_temp = df_temp.groupby(x_data).sum()
-
-        pie_fig = px.pie(df_temp, values=y_data, names=df_temp.index, color_discrete_sequence=px.colors.qualitative.Plotly)
-        pie_fig.update_layout(
-            title={
-                'text': piechart_name,
-                'y':0.94,
-                'x':0.5,
-                'xanchor': 'center',
-                'yanchor': 'top'
-            }
-        )
-
-        pie_fig.update_traces(
-             textposition="inside",
-             textinfo='percent+label'
-
-        )
-
-        return dcc.Graph(figure=pie_fig), dcc.Graph(figure=pie_fig, responsive=True, style={"min-height":"0","flex-grow":"1"})
-
-######################################## processing the table ########################################
 def get_menu_table(list_color_cols, ind):
     return [html.Div( [
         html.Div(id = {'index':ind, 'type':'menu-columns-table'}, children = [
@@ -1312,227 +910,6 @@ def get_menu_table(list_color_cols, ind):
         dcc.Input(id={'index':ind, 'type':"name-table"}, type="text", placeholder="Название", style = INPUT_STYLE, persistence='local'),
         ]
     )]
-
-@callback(Output({'index':MATCH, 'type':'menu-columns-table'}, 'style'),
-          Output({'index':MATCH, 'type':'correlation-type-table'}, 'style'),
-          Input({'index':MATCH, 'type':'correlation'}, 'value'),
-          prevent_initial_call=False)
-def update_disabled_columns(value):
-    not_value = {'display':'none'} if value==[] else {}
-    value = {} if value==[] else {'display':'none'}
-    # print(value, not_value)
-    return value, not_value
-
-@callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
-          Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
-          Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-          Input({'index':MATCH, 'type':'name-table'},'value'),
-          State({'index':MATCH, 'type':'sheet'},'value'),
-          prevent_initial_call=True)
-def rename_sheet_table(name, value):
-    print(name)
-    style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/table.png?raw=true')"}
-    if not name:
-        return value, style, style
-    else:
-
-        return name, style, style
-
-@callback(Output({'index':MATCH, 'type':'value_filter-table'}, 'options'),
-          Input('df-table','data'),
-          Input({'index':MATCH, 'type':'filter-table'}, 'value'),
-          prevent_initial_call=False)
-def set_options_table(data, filter_col):
-    df = pd.read_json(json.dumps(data), orient='records')
-    if not filter_col:
-        return no_update
-    return df[filter_col].unique()
-
-@callback([Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
-           Output({'index':MATCH, 'type':'dashboard'}, 'children', allow_duplicate=True)],
-            [Input('df-table','data'),
-             Input('df-table','hidden_columns'),
-            Input({'index':MATCH, 'type':'correlation'}, 'value'),
-            Input({'index':MATCH, 'type':'xaxis-table'},'value'),
-            Input({'index':MATCH, 'type':'yaxis-table'}, 'value'),
-            Input({'index':MATCH, 'type':'zaxis-table'}, 'value'),
-            Input({'index':MATCH, 'type':'correlation-type-table'}, 'value'),
-            Input({'index':MATCH, 'type':'agg-table'}, 'value'),
-            Input({'index':MATCH, 'type':'filter-table'}, 'value'),
-            Input({'index':MATCH, 'type':'value_filter-table'}, 'value'),
-            Input({'index':MATCH, 'type':'name-table'},'value')],
-            prevent_initial_call=True)
-def make_table(data, hidden_columns, correlation, x_data, y_data, z_data, corr_type, agg_data, filter_col, value_filter, chart_name):
-    df = pd.read_json(json.dumps(data), orient='records')
-    cols = ['NA'] if 'NA' in df.columns else []
-    cols += hidden_columns if hidden_columns else []
-    df = df.drop(columns = cols)
-    if filter_col and value_filter:
-        df = df.loc[df[filter_col].isin(value_filter)]
-
-    if correlation:
-        cols = df.columns[np.array([df[i].dtype != 'object' for i in df.columns])].tolist()
-        table_chart = px.imshow(df[cols].corr(corr_type).round(3), text_auto=True, aspect="auto")
-
-    else:
-        ### dictionary for an aggregation ###
-        d = {'sum': 'sum()', 'avg':'mean()', 'count': 'count()', 'countd': 'nunique()', 'min':'min()', 'max':'max()'}
-
-        if not all([x_data, y_data, z_data]):
-            return no_update, no_update
-
-        nnn = df.groupby([x_data, y_data])[z_data]
-        r = {'nnn':nnn}
-        exec('nnn = nnn.'+d[agg_data], r)
-
-        df_temp = r['nnn'].reset_index().pivot(index=x_data, columns=y_data, values=z_data)
-        table_chart = px.imshow(df_temp.round(3), text_auto=True, zmax = df_temp.stack().quantile(0.75), zmin = df_temp.min().min(), aspect="auto")
-
-    table_chart.update_layout(
-        title={
-            'text': chart_name,
-            'y':0.94,
-            'x':0.5,
-            'xanchor': 'center',
-            'yanchor': 'top'
-        },
-        xaxis = {'showgrid':False},
-        yaxis = {'showgrid':False}
-    )
-
-    return dcc.Graph(figure=table_chart), dcc.Graph(figure=table_chart, responsive=True, style={"min-height":"0","flex-grow":"1"})
-
-######################################## processing the wordcloud ########################################
-
-def get_menu_wordcloud(list_color_cols, ind):
-    return [html.Div([
-                html.P("Текстовые данные", style = P_STYLE),
-                dcc.Dropdown(id={'index':ind, 'type':'column-wordcloud'},
-                            options=[x['options'] for x in list_color_cols if x['type']=='object'],
-                            persistence='local'),
-                dcc.Checklist(['Разбивать текст на слова'], id = {'index':ind, 'type':'explode-text-wordcloud'}, style = P_STYLE),
-
-                html.P("Частота упоминаний слов:", style = P_STYLE),
-                dcc.Dropdown(id={'index':ind, 'type':'count-wordcloud'},
-                            options=[x['options'] for x in list_color_cols],
-                            persistence='local'),
-                html.P("Минимальная длина слова", style = P_STYLE),
-                dcc.Slider(min=1, max=5, step=1, value=3, id={'index':ind, 'type':'lenth-slider-wordcloud'}, marks=None,
-                            tooltip={"placement": "bottom", "always_visible": True}, persistence='local'),
-                html.P("Частота упоминаний от", style = P_STYLE),
-                dcc.Slider(min=1, max=10, step=1, value=3, id={'index':ind, 'type':'frequency-slider-wordcloud'}, marks=None,
-                            tooltip={"placement": "bottom", "always_visible": True}, persistence='local'),
-                html.P("Размер слов", style = P_STYLE),
-                dcc.Slider(min=1, max=5, step=0.5, value=1, id={'index':ind, 'type':'size-slider-wordcloud'}, marks=None,
-                            tooltip={"placement": "bottom", "always_visible": True}, persistence='local'),
-                # html.P("Высота", style = P_STYLE),
-                # dcc.Slider(min=200, max=1000, step=50, value=500, id='height-slider', marks=None,
-                #             tooltip={"placement": "bottom", "always_visible": True}, persistence='local'),
-                html.P("Масштаб сетки", style = P_STYLE),
-                dcc.Slider(min=3, max=25, step=1, value=15, id={'index':ind, 'type':'grid-slider-wordcloud'}, marks=None,
-                            tooltip={"placement": "bottom", "always_visible": True}, persistence='local'),
-                html.P("Название листа", style = P_STYLE),
-                dcc.Input(id={'index':ind, 'type':"name-wordcloud"}, type="text", placeholder="Название", style = INPUT_STYLE, persistence='local'),
-
-
-                ]
-        # dcc.Textarea(id = 'result')]
-            ),
-            html.Div([
-                html.P("Выберите цвет", style = P_STYLE),
-                daq.ColorPicker(
-                id={'index':ind, 'type':'color-wordcloud'},
-                value=dict(hex='#000000'),
-                # size=200,
-                persistence='local',
-                style={'border':'0px'},
-            )], style={'height':500, 'margin-top':10})
-    ]
-
-@callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
-          Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
-          Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-          Input({'index':MATCH, 'type':'name-wordcloud'},'value'),
-          State({'index':MATCH, 'type':'sheet'},'value'),
-          prevent_initial_call=True)
-def rename_sheet_wordcloud(name, value):
-    style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/wordcloud.png?raw=true')"}
-    if not name:
-        return value, style, style
-    else:
-
-        return name, style, style
-
-@callback([Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
-           Output({'index':MATCH, 'type':'dashboard'}, 'children', allow_duplicate=True),
-           Output({'index':MATCH, 'type':'frequency-slider-wordcloud'}, 'max', allow_duplicate=True)],
-           [Input('df-table', 'data'),
-            Input('df-table','hidden_columns'),
-            Input({'index':MATCH, 'type':'column-wordcloud'}, 'value'),
-            Input({'index':MATCH, 'type':'explode-text-wordcloud'}, 'value'),
-            Input({'index':MATCH, 'type':'count-wordcloud'}, 'value'),
-            Input({'index':MATCH, 'type':'lenth-slider-wordcloud'}, 'value'),
-            Input({'index':MATCH, 'type':'size-slider-wordcloud'}, 'value'),
-            Input({'index':MATCH, 'type':'grid-slider-wordcloud'}, 'value'),
-            Input({'index':MATCH, 'type':'color-wordcloud'}, 'value'),
-            Input ({'index':MATCH, 'type':'frequency-slider-wordcloud'}, 'value')],
-            prevent_initial_call=True)
-
-def make_wordcloud(data, hidden_columns, column, explode, column_count, sliderLength, slider_size, sliderGrid, wordsColor, frequency):
-    security_data = []
-
-    df = pd.read_json(json.dumps(data), orient='records')
-    cols = ['NA'] if 'NA' in df.columns else []
-    cols += hidden_columns if hidden_columns else []
-    df = df.drop(columns = cols)
-
-    # try:
-    if column_count:
-        df = df[[column, column_count]].drop_duplicates()
-
-    if explode:
-        words = df[column].str.upper().str.extractall(r'([A-ZА-ЯЁ\d\-]+)').reset_index('match').rename(columns = {0:column})[column].to_frame()
-    else:
-        words = df[column].to_frame()
-    words['lenth'] = words[column].apply(len)
-
-    df_temp = words.loc[words['lenth']>=sliderLength, column].value_counts()
-    mx, mn = df_temp.values.max(), df_temp.values.min()
-
-    if mx==mn:
-        # freq_slider = 1
-        security_data = [[k, x, k+' ('+str(x)+')'] for k, x in zip(df_temp.keys(), df_temp.values)]
-    else:
-        security_data = [[k, ((x-mn)/ (mx-mn))*(25)+5, k+' ('+str(x)+')'] for k, x in zip(df_temp.keys(), df_temp.values) if x >= frequency]
-
-        # origin_data = [[k, v] for k, v in df_temp.items() if v >= frequency]
-
-    # except:
-    #     pass
-
-    cloud = DashWordcloud(
-            id='wordcloud',
-            list=security_data,
-            width=500, height=500,
-            gridSize=sliderGrid,
-            weightFactor=slider_size,
-            # weightFactor = 3,
-            color=wordsColor['hex'],
-            backgroundColor='#fff',
-            shuffle=False,
-            rotateRatio=0.5,
-            # shrinkToFit=True,
-            # shape='square',
-            ellipticity=1,
-            hover=True,
-            # minSize = 16,
-            # origin = [10,10]
-        )
-
-    return cloud, cloud, security_data[0][1]
-
-
-######################################## processing the text ########################################
 
 def get_menu_text(current_index):
     # return [html.P("Название листа", style = P_STYLE),
@@ -1596,45 +973,56 @@ def get_menu_text(current_index):
             html.Div(id={'index':current_index, 'type':'uploaded-files'})
             ]
 
-@callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
+@callback(Output({'index': MATCH, 'type':'menu'}, 'children'),
           Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
           Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-          Input({'index':MATCH, 'type':'name-text'},'value'),
-          State({'index':MATCH, 'type':'sheet'},'value'),
+          Input({'index': MATCH, 'type':'chart_type'}, 'value'),
+          State({'index': MATCH, 'type':'chart_type'}, 'id'),
+          State('df-table', 'data'),
+          State('df-table', 'hidden_columns'),
           prevent_initial_call=True)
-def rename_sheet_text(name, value):
-    style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/text.png?raw=true')"}
-    if not name:
-        return value, style, style
-    else:
+def generate_menu(chart_type, chart_id, data, hidden_columns):
 
-        return name, style, style
+    current_index = chart_id['index']
+    # print('generation', chart_type, current_index)
 
-@app.callback(Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'dashboard'}, 'children', allow_duplicate=True),
-        Input({'index':MATCH, 'type':'textarea-example'}, 'value'),
-        Input({'index':MATCH, 'type':'size-slider-text'}, 'value'),
-        Input({'index':MATCH, 'type':'upload-image'}, 'contents'), prevent_initial_call=True
-    )
-def update_output(text, size, images_content):
-    res_text = []
-    for p in text.splitlines():
-        res_text.append(html.P(p,style = {'font-size': size}))
-        
-    res_imgs = []
-    if images_content:
-        for image_content in images_content:
-            res_imgs.append(html.Img(src=image_content, style={'max-width': '100%', 'max-height': '100%', 'object-fit': 'contain'}))
-        
-    
-    return [*res_text,*res_imgs], [*res_text,*res_imgs]
-            
+    df = pd.read_json(json.dumps(data), orient='records')
+
+    # print(hidden_columns)
+    cols = ['NA'] if 'NA' in df.columns else []
+    cols += hidden_columns if hidden_columns else []
+    df = df.drop(columns = cols)
+
+    type_cols = dict()
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            type_cols[col] = {'style': {'color':'Blue'}, 'type':'object'}
+        elif df[col].dtype == 'int64' and len(df[col].unique())<30:
+            type_cols[col] = {'style': {'color':'Orange'}, 'type':'discrete'}
+        else:
+            type_cols[col] = {'style': {'color':'Green'}, 'type':df[col].dtype}
+
+    list_color_cols = [{'options':{'label':html.Span([i], style=type_cols[i]['style']), 'value': i},
+                       'type': type_cols[i]['type']} for i in df.columns]
+
+    if chart_type == 'bar':
+        chart = get_menu_bar(list_color_cols, current_index)
+    elif chart_type == 'line':
+        chart = get_menu_line(list_color_cols, current_index)
+    elif chart_type == 'dot':
+        chart = get_menu_scatter(list_color_cols, current_index)
+    elif chart_type == 'pie':
+        chart = get_menu_pie(list_color_cols, current_index)
+    elif chart_type == 'table':
+        chart =  get_menu_table(list_color_cols, current_index)
+    elif chart_type == 'wordcloud':
+        chart = get_menu_wordcloud(list_color_cols, current_index)
+    elif chart_type=='text':
+        chart = get_menu_text(current_index)
+    style = {**tab_style, **custom_style_tab, 'background-image':f"url('https://github.com/yupest/nto/blob/master/src/{chart_type}.png?raw=true')"}
+    return chart, style, style           
 
 ######################################## processing the name dashboard ########################################
-# @callback(Output('name-dashboard', 'children'),
-#               Input('input-name-dashboard','value'))
-# def set_name_dashboard(name):
-#     return name
 
 html_template = '''<!DOCTYPE html>
 <html lang="en">
@@ -1912,8 +1300,6 @@ def save_html(n_clicks, container_children, h1):
             figures.append(block)
         except:
             continue
-        # else:
-        #     continue
 
     if h1 is None:
         h1 = ''
