@@ -3,6 +3,7 @@ import plotly.express as px
 from dash.dependencies import MATCH
 import pandas as pd
 import json
+import io
 
 # TODO: убрать стилевые константы в отдельный файл
 tab_style = {
@@ -39,7 +40,7 @@ def register_linechart_callbacks(app):
               Input({'index':MATCH, 'type':'filter-line'}, 'value'),
               prevent_initial_call=False)
     def set_options_line(data, filter_col):
-        df = pd.read_json(json.dumps(data), orient='records')
+        df = pd.read_json(io.StringIO(json.dumps(data)), orient='records')
         if not filter_col:
             return no_update
         return df[filter_col].unique()

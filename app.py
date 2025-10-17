@@ -143,7 +143,6 @@ app.layout = html.Div([
         dcc.Tab(label='Визуализация',children = [
 
             dcc.Tabs(id = 'tabs', value = 'Лист 1', style = tabs_styles),
-            html.Button("Удалить все листы", id="drop_sheets", style = {'display':'none'}),
             dcc.ConfirmDialog(
                 id="confirm-delete",
             )
@@ -1225,4 +1224,4 @@ app.clientside_callback(
 
 # running the server
 if __name__ == '__main__':
-    app.run(debug=True, host = '127.0.0.1', port = 5001)
+    app.run(host = '127.0.0.1', port = 5001)
