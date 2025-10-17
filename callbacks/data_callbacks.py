@@ -60,7 +60,7 @@ def parse_contents(contents, filename):
     return df_uploaded
 
 # ========== Отдельная функция для сборки вёрстки ==========
-def build_data_view(df, filename, hidden_columns = []):
+def build_data_view(df, filename, hidden_columns = [], filter_query = ''):
     """Создает меню, таблицу данных и таблицу статистики"""
     # --- меню ---
     menu = html.Div([
@@ -107,6 +107,7 @@ def build_data_view(df, filename, hidden_columns = []):
                     editable=True,
                     hidden_columns = hidden_columns,
                     filter_action="native",
+                    filter_query=filter_query,
                     sort_action="native",
                     sort_mode="multi",
                     column_selectable="single",
@@ -119,7 +120,7 @@ def build_data_view(df, filename, hidden_columns = []):
                     page_size=15,
                     persistence = True,
                     persistence_type = 'local',
-                    persisted_props = ['hidden_columns', 'filter_query', 'page_current', 'selected_columns', 'selected_rows'],
+                    persisted_props = ['page_current', 'selected_columns', 'selected_rows'],
                     style_header = {
                         'textAlign': 'center',  # Центрируем заголовки
                         'backgroundColor': 'white',
@@ -287,7 +288,8 @@ def register_data_callbacks(app):
             storage['data'] = {
             'filename': filename,
             'df': df.to_json(orient='records'),
-            'hidden_columns': []
+            'hidden_columns': [],
+            'filter_query': '',
             }
 
         except Exception as e:
@@ -305,7 +307,8 @@ def register_data_callbacks(app):
         filename = storage['data']['filename']
         df = pd.read_json(io.StringIO(storage['data']['df']), orient='records')
         hidden_columns = storage['data']['hidden_columns']
-        return build_data_view(df, filename, hidden_columns)
+        filter_query = storage['data']['filter_query']
+        return build_data_view(df, filename, hidden_columns, filter_query = storage['data']['filter_query'])
 
     @app.callback(Output('show-data', 'hidden', allow_duplicate=True),
                   Output('show-describe', 'hidden', allow_duplicate=True),
@@ -326,6 +329,31 @@ def register_data_callbacks(app):
             df = pd.read_json(io.StringIO(data['data']), orient='records')
             return list(set(hidden_columns)& set(df.columns)) if hidden_columns else []
         return no_update
+    
+    @app.callback(
+        Output('storage', 'data', allow_duplicate=True),
+        Input('df-table', 'hidden_columns'),
+        Input('df-table', 'filter_query'),
+        State('storage', 'data'),
+        prevent_initial_call=True
+    )
+    def sync_hidden_columns(hidden_columns, filter_query, storage):
+        if storage is None or not storage.get('data') or storage['data'].get('df') in [None, '[]']:
+            raise PreventUpdate
+
+        storage_data = storage['data']
+
+        try:
+            df = pd.read_json(io.StringIO(storage_data['df']), orient='records')
+        except Exception:
+            raise PreventUpdate
+
+        cols = list(df.columns)
+        allowed = [c for c in (hidden_columns or []) if c in cols]
+        storage_data['hidden_columns'] = allowed
+        storage['data'] = storage_data
+        storage['data']['filter_query'] = filter_query or ''
+        return storage
         
     @app.callback(Output('download-data', 'data'),
               Input('download-data-btn', 'n_clicks'),
