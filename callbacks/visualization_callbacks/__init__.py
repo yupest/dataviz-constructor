@@ -7,6 +7,7 @@ from .table_callbacks import register_table_callbacks
 from .text_callbacks import register_text_callbacks
 
 def register_visualization_callbacks(app):
+    
     register_barchart_callbacks(app)
     register_linechart_callbacks(app)
     register_wordcloud_callbacks(app)

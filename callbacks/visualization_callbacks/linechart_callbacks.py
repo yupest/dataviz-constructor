@@ -1,4 +1,4 @@
-from dash import dcc, Input, Output, State, no_update
+from dash import dcc, Input, Output, no_update
 import plotly.express as px
 from dash.dependencies import MATCH
 import pandas as pd
@@ -24,13 +24,12 @@ def register_linechart_callbacks(app):
               Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
               Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
               Input({'index':MATCH, 'type':'name-line'},'value'),
-              State({'index':MATCH, 'type':'sheet'},'value'),
               prevent_initial_call=True)
     def rename_sheet_line(name, value):
         print(name)
         style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/line.png?raw=true')"}
         if not name:
-            return value, style, style
+            return no_update, style, style
         else:
 
             return name, style, style
@@ -45,21 +44,20 @@ def register_linechart_callbacks(app):
             return no_update
         return df[filter_col].unique()
 
-    @app.callback([Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
-               Output({'index':MATCH, 'type':'dashboard'}, 'children', allow_duplicate=True)],
-              [Input('df-table','data'),
+    @app.callback(Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
+               Input('df-table','data'),
                Input('df-table','hidden_columns'),
                Input({'index':MATCH, 'type':'xaxis'},'value'),
                Input({'index':MATCH, 'type':'yaxis'}, 'value'),
                Input({'index':MATCH, 'type':'agg-line'}, 'value'),
                Input({'index':MATCH, 'type':'filter-line'}, 'value'),
                Input({'index':MATCH, 'type':'value_filter-line'}, 'value'),
-               Input({'index':MATCH, 'type':'name-line'},'value')],
+               Input({'index':MATCH, 'type':'name-line'},'value'),
               prevent_initial_call=True)
     def make_line(data, hidden_columns, x_data, y_data, agg_data, filter_col, value_filter, linechart_name):
 
         if not x_data or not y_data:
-            return no_update, no_update
+            return []
         ### dictionary for an aggregation ###
         d = {'sum': 'sum()', 'avg':'mean()', 'count': 'count()', 'countd': 'nunique()', 'min':'min()', 'max':'max()'}
 
@@ -85,4 +83,4 @@ def register_linechart_callbacks(app):
                 'yanchor': 'top'
             }
         )
-        return dcc.Graph(figure=line_fig), dcc.Graph(figure=line_fig, responsive=True, style={"min-height":"0","flex-grow":"1"})
+        return dcc.Graph(figure=line_fig)

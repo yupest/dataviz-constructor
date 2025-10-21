@@ -1,4 +1,4 @@
-from dash import dcc, Input, Output, State
+from dash import dcc, Input, Output, no_update
 import plotly.express as px
 from dash.dependencies import MATCH
 import numpy as np
@@ -24,20 +24,18 @@ def register_dotchart_callbacks(app):
               Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
               Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
               Input({'index':MATCH, 'type':'name-dot'},'value'),
-              State({'index':MATCH, 'type':'sheet'},'value'),
               prevent_initial_call=True)
-    def rename_sheet_dot(name, value):
+    def rename_sheet_dot(name):
         style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/dot.png?raw=true')"}
         if not name:
-            return value, style, style
+            return no_update, style, style
         else:
 
             return name, style, style
 
-    @app.callback([Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
-               Output({'index':MATCH, 'type':'dashboard'}, 'children', allow_duplicate=True)],
-                [Input('df-table','data'),
-                 Input('df-table','hidden_columns'),
+    @app.callback(Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
+                Input('df-table','data'),
+                Input('df-table','hidden_columns'),
                 Input({'index':MATCH, 'type':'xaxis'},'value'),
                 Input({'index':MATCH, 'type':'yaxis'}, 'value'),
                 Input({'index':MATCH, 'type':'tooltip-dot'}, 'value'),
@@ -46,7 +44,7 @@ def register_dotchart_callbacks(app):
                 Input({'index':MATCH, 'type':'size-column-dot'}, 'value'),
                 Input({'index':MATCH, 'type':'color-dot'}, 'value'),
                 Input({'index':MATCH, 'type':'opacity-dot'}, 'value'),
-                Input({'index':MATCH, 'type':'name-dot'},'value')],
+                Input({'index':MATCH, 'type':'name-dot'},'value'),
                 prevent_initial_call=True)
 
     def make_scatter(data, hidden_columns, x_data, y_data, tooltip, show_line, size_dot, size_data, color_data, opacity, dotchart_name):
@@ -102,4 +100,4 @@ def register_dotchart_callbacks(app):
                     hovertext = f'y = {a:.3f}x + {b:.1f}',
                     line=dict(color=colors[i])
                 )
-        return dcc.Graph(figure=dot_fig), dcc.Graph(figure=dot_fig, responsive=True, style={"min-height":"0","flex-grow":"1"})
+        return dcc.Graph(figure=dot_fig)

@@ -3,41 +3,8 @@ import pandas as pd
 import json
 import base64
 import io
-import uuid
-import dash_bootstrap_components as dbc
-from dash.dependencies import ALL
 from dash.exceptions import PreventUpdate
-from .utils import ensure_app_state
-
-# TODO: переместить стилевые константы в отдельный файл(ы)
-P_STYLE = {
-     'margin-top': 10,
-     'margin-bottom': 5
-}
-
-tab_style = {
-    'padding': '10px 10px',  # Универсальные отступы
-    'display': 'flex',
-    'alignItems': 'center',  # Вертикальное выравнивание содержимого
-    'justifyContent': 'center',  # Горизонтальное выравнивание
-    'textAlign': 'center',
-}
-
-drop_sheet = dcc.Tab(id = {'index':'drop', 'type':'sheet'}, label = '❌', value = 'drop', style = tab_style, selected_style=tab_style)
-append_sheet = dcc.Tab(id = {'index':'add', 'type':'sheet'}, label = '➕', value = 'add', style = tab_style, selected_style=tab_style)
-
-BTN_style = {'margin':'10px 0px 5px 2px',
-             'backgroundImage':'url("https://github.com/yupest/nto/blob/master/src/{btn}.png?raw=true")',
-             'backgroundRepeat': 'no-repeat',
-             'backgroundPosition': '10px center',
-             'backgroundSize': '20px',
-             'padding':'0px 10px 0px 35px',
-             'textAlign': 'right'}
-
-def get_btn_style(url):
-    d = BTN_style.copy()
-    d['backgroundImage'] = d['backgroundImage'].format(btn = url)
-    return d
+from .utils import *
 
 def parse_contents(contents, filename):
     df_uploaded = pd.DataFrame()
@@ -47,7 +14,7 @@ def parse_contents(contents, filename):
             content_type, content_string = contents.split(',')
             decoded = base64.b64decode(content_string)
 
-            if 'csv' in filename:
+            if 'csv' in filename or 'txt' in filename:
                 df_uploaded = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
             elif 'xls' in filename:
                 df_uploaded = pd.read_excel(io.BytesIO(decoded))
@@ -66,7 +33,7 @@ def build_data_view(df, filename, hidden_columns = [], filter_query = ''):
     menu = html.Div([
         html.H3(filename, style={'textAlign': 'center', 'marginTop': 15}),
         html.Div([
-            html.Button("Данные", id="show-data-btn", style=get_btn_style("data")),
+            html.Button("Данные", id="show-data-btn", style=get_btn_style("datatable")),
             html.Button("Статистика", id="show-describe-btn", style=get_btn_style("describe")),
             dcc.Input(id="input-filename", type="text", placeholder="Название файла", style={
                 'margin': '10px 0px 11.5px 2px', 'height': '38px',
@@ -284,7 +251,7 @@ def register_data_callbacks(app):
             df['NA'] = (df.isna().any(axis=1) | (df == '').any(axis=1)).astype(int)
             df = df[['NA']+cols_exist]
 
-            storage = ensure_app_state(storage)
+            storage = ensure_app_state(storage, True)
             storage['data'] = {
             'filename': filename,
             'df': df.to_json(orient='records'),
@@ -402,166 +369,4 @@ def register_data_callbacks(app):
         else:
             return no_update
 
-    # TODO: убрать константы в отдельный файл
-    type_diagrams = {'bar':'Столбчатая', 'line':'Линейная', 'dot':"Точечная", 'table':'Цветная таблица', 'pie':"Круговая", 'text':"Текст", 'wordcloud':"Облако слов"}
-    icons = [{'label': html.Span([
-                        html.Img(src=f"https://github.com/yupest/nto/blob/master/src/{k}.png?raw=true", height=25),
-                        html.Span(v, style={ 'padding-left': 10})],
-                       style={'align-items': 'center', 'justify-content': 'center'}),
-              'value': k}  for k, v in type_diagrams.items()]
-
-    # При загрузке страницы читаем данные из хранилища
-    @app.callback(
-        Output("tabs", "children"),
-        Output("tabs", "value"),
-        Output("storage", "data", allow_duplicate=True),
-        Output('dashboard-items', 'children'),
-        Input("storage", "data"),
-        prevent_initial_call='initial_duplicate'
-    )
-    def load_tabs(storage):
-        if not storage:
-            raise PreventUpdate
-        if not storage.get('sheets'):
-            # Удаление всех страниц — создаем лист по умолчанию
-            tab = dcc.Tab(id = {'index':'sheet_1', 'type':'sheet'}, label = 'Лист 1', value = 'Лист 1', children = [
-
-                    dbc.Container([dcc.Dropdown(
-                        id = {'index':"sheet_1", 'type':'chart_type'}, placeholder = 'Выберите тип диаграммы',
-                        persistence='local',
-                        options=icons)], style = {'margin-top':10}, fluid=True),
-                    dbc.Container([
-                        dbc.Row([
-                            dbc.Col([
-                                html.Div(id={'index':'sheet_1', 'type' :'menu'})
-                            ], width={'size':4}),
-
-                            dbc.Col([
-                                dcc.Loading(html.Div(id = {'index':'sheet_1', 'type' : 'chart'}, style = {'text-align':'center'}) , type="circle", style={"visibility":"visible", "filter": "blur(2px)", 'margin-top':'100px'})
-                            ], width={'size':8})
-
-                        ]),
-                    ], fluid=True)
-                    ], style = tab_style, selected_style=tab_style)
-
-            storage['sheets'] = {'Лист 1': tab}
-            storage['active_tab'] = 'Лист 1'
-            dashboard = html.Div(id={'index':"sheet_1", 'type':'dashboard'},
-                     style={
-                        "height":'100%',
-                        "width":'100%',
-                        "display":"flex",
-                        "flex-direction":"column",
-                        "flex-grow":"0"
-                    })
-            return [tab, append_sheet, drop_sheet], "Лист 1", storage, [dashboard]
-        else:
-            # Восстанавливаем из хранилища
-            tabs = [tab for tab in storage["sheets"].values()]
-            tabs.append(append_sheet)
-            tabs.append(drop_sheet)
-
-            dashboard = [html.Div(id={'index':"sheet_"+ind.split(' ')[-1], 'type':'dashboard'}, style={
-                            "height":'100%',
-                            "width":'100%',
-                            "display":"flex",
-                            "flex-direction":"column",
-                            "flex-grow":"0"
-                        }) for ind in storage["sheets"].keys() ]
-
-            return tabs, storage["active_tab"], no_update, dashboard
-
-    @app.callback(
-        Output("storage", "data", allow_duplicate=True),
-        Output("confirm-delete", "displayed"),
-        Output("confirm-delete", "message"),
-        Input('tabs', 'value'),
-        Input('tabs', 'children'),
-        Input({'index': ALL, 'type':'menu'}, 'children'),
-        Input({"index": ALL, "type": "sheet"}, 'label'),
-        Input({'index': ALL, 'type':'top-slider-bar'}, 'value'),
-        State("storage", "data"),
-        prevent_initial_call=True
-    )
-    def set_active_tab(active_tab, tabs, menu, label, top, storage):
-        if not storage:
-            raise PreventUpdate
-        if active_tab!='drop' and active_tab != 'add':
-            storage['active_tab'] = active_tab
-            storage["sheets"] = {tab['props']['value']: tab for i, tab in enumerate(tabs[:-2])}
-        elif active_tab=='add':
-            if len(storage['sheets'])<10:
-                number_tab = max([int(sheet.split()[1]) for sheet in storage['sheets'].keys()])+1
-                new_tab_name = f"Лист {number_tab}"
-
-                new_tab = dcc.Tab(label=new_tab_name, value=new_tab_name, id = {'index':f'sheet_{number_tab}', 'type':'sheet'}, children = [
-                                dbc.Container([dcc.Dropdown( id= {'index':f'sheet_{number_tab}', 'type' : 'chart_type'}, placeholder = 'Выберите тип диаграммы',
-                                                            persistence='local', options=icons)],
-                                              style = {'margin-top':10}, fluid=True),
-                                dbc.Container([
-                                    dbc.Row([
-                                        dbc.Col([
-                                            html.Div(id = {'index':f'sheet_{number_tab}', 'type' : 'menu'})
-                                        ], width={'size':4}),
-
-                                        dbc.Col([
-                                            dcc.Loading(html.Div(id = {'index':f'sheet_{number_tab}', 'type' : 'chart'}, style = {'text-align':'center'}) , type="circle", style={"visibility":"visible", "filter": "blur(2px)", 'margin-top':'100px'})
-                                        ], width={'size':8})
-
-                                    ]),
-                                ], fluid=True)
-                    ], style = tab_style, selected_style=tab_style)
-
-                tabs = tabs[:-2] + [new_tab]
-                for tab in tabs[:-2]:
-                    storage["sheets"][tab['props']['value']] = tab
-                storage["sheets"][new_tab_name] = new_tab
-                storage["active_tab"] = new_tab_name
-
-        else:
-            return no_update, True, f'Вы уверены, что хотите удалить "{storage["active_tab"]}"?'
-        return storage, no_update, no_update
-
-    @app.callback(
-        Output("storage", "data", allow_duplicate=True),
-        Input("confirm-delete", "submit_n_clicks"),
-        State('storage', 'data'),
-        prevent_initial_call=True
-    )
-    def show_confirmation(n_clicks, storage):
-        if not storage:
-            raise PreventUpdate
-        number_sheets = len(storage['sheets'])
-        if n_clicks:
-            if number_sheets == 1:
-                raise PreventUpdate
-            active_tab = storage['active_tab']
-            del storage["sheets"][active_tab]
-            active_tab = list(storage["sheets"].keys())[-1]
-            storage['active_tab'] = active_tab
-            return storage
-        return no_update
     
-    @app.callback(
-        Output('storage', 'data', allow_duplicate=True),
-        Input('df-table', 'data'),
-        State('storage', 'data'),
-        prevent_initial_call=True
-    )
-    def save_table_edits(all_table_data, storage):
-        """Обновляем данные в storage при любом редактировании таблицы"""
-        if not storage or not storage.get("data"):
-            raise PreventUpdate
-        if not all_table_data or len(all_table_data) == 0 or all_table_data[0] is None:
-            raise PreventUpdate
-
-        try:
-            df = pd.DataFrame(all_table_data)
-            df["NA"] = (df.isna().any(axis=1) | (df == "").any(axis=1)).astype(int)
-            storage["data"]['df'] = df.to_json(orient="records")
-            print("✅ Изменения сохранены в storage")
-        except Exception as e:
-            print("Ошибка при сохранении таблицы:", e)
-            raise PreventUpdate
-
-        return storage
