@@ -31,6 +31,6 @@ CMD ["python", "app.py"]
 
 # ---- Labels for GHCR ----
 LABEL org.opencontainers.image.title="dataviz-constructor"
-LABEL org.opencontainers.image.description="Проект датавиз-конструктор предназначен для обработки и анализа данных через визуализацию. Итогом работы является дашбборд или вычислительное эссе."
+LABEL org.opencontainers.image.description="Проект датавиз-конструктор предназначен для обработки и анализа данных через визуализацию. Итогом работы является дашборд или вычислительное эссе."
 LABEL org.opencontainers.image.source="https://github.com/${GITHUB_REPOSITORY}"
 LABEL org.opencontainers.image.version="${IMAGE_VERSION}"
