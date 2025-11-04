@@ -338,23 +338,24 @@ def get_menu_text(current_index):
                 multiple=True
             ),
             html.Div(id={'index':current_index, 'type':'uploaded-images'}),
-            html.P('Прикрепить файл', style = P_STYLE),
-            dcc.Upload(
-                id={'index':current_index, 'type':'upload-file-text'},
-                children=html.Div(['Перетащите или ', html.A('выберите файл')]),
-                style={
-                    'width': '100%',
-                    'height': '60px',
-                    'lineHeight': '60px',
-                    'borderWidth': '1px',
-                    'borderStyle': 'dashed',
-                    'borderRadius': '5px',
-                    'textAlign': 'center',
-                    'margin': '10px 0px'
-                },
-                multiple=False
-            ),
+            # html.P('Прикрепить файл', style = P_STYLE),
+            # dcc.Upload(
+            #     id={'index':current_index, 'type':'upload-file-text'},
+            #     children=html.Div(['Перетащите или ', html.A('выберите файл')]),
+            #     style={
+            #         'width': '100%',
+            #         'height': '60px',
+            #         'lineHeight': '60px',
+            #         'borderWidth': '1px',
+            #         'borderStyle': 'dashed',
+            #         'borderRadius': '5px',
+            #         'textAlign': 'center',
+            #         'margin': '10px 0px'
+            #     },
+            #     multiple=False
+            # ),
             
             
-            html.Div(id={'index':current_index, 'type':'uploaded-files'})
+            # html.Div(id={'index':current_index, 'type':'uploaded-files'})
+
             ]
