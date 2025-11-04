@@ -25,13 +25,12 @@ def register_linechart_callbacks(app):
               Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
               Input({'index':MATCH, 'type':'name-line'},'value'),
               prevent_initial_call=True)
-    def rename_sheet_line(name, value):
+    def rename_sheet_line(name):
         print(name)
         style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/line.png?raw=true')"}
         if not name:
             return no_update, style, style
         else:
-
             return name, style, style
 
     @app.callback(Output({'index':MATCH, 'type':'value_filter-line'}, 'options'),
@@ -83,4 +82,5 @@ def register_linechart_callbacks(app):
                 'yanchor': 'top'
             }
         )
+
         return dcc.Graph(figure=line_fig)
