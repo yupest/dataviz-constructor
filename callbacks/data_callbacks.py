@@ -146,6 +146,8 @@ def build_data_view(df, filename, hidden_columns = [], filter_query = ''):
         'fontWeight': 'bold'
     } for i in object_list]
 
+    print('object_list', object_list)
+
     df_desc = df[num_list+discrete_list].describe().reset_index()
     dataset =  json.loads(df_desc.to_json(orient = 'records'))
 
@@ -171,7 +173,10 @@ def build_data_view(df, filename, hidden_columns = [], filter_query = ''):
                            'rule':'''margin-top: 0px;'''}]
                 )
 
-    df_desc = df[object_list+discrete_list].describe().reset_index()
+    df_copy = df.copy()
+    df_copy[discrete_list] = df_copy[discrete_list].astype('object')
+
+    df_desc = df_copy[object_list+discrete_list].describe().reset_index()
     dataset =  json.loads(df_desc.to_json(orient = 'records'))
 
     df_describe_object = dash_table.DataTable(
