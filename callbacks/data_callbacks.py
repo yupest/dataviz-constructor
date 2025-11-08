@@ -352,7 +352,7 @@ def register_data_callbacks(app):
             else:
                 name = '.'.join(name_list[:-1])
             format_file = name_list[-1]
-            return dcc.send_data_frame(df.to_csv, name+new+format_file, index = False)
+            return dcc.send_data_frame(df.to_csv, name+new+'csv', index = False)
         else:
             return no_update
 
@@ -373,5 +373,6 @@ def register_data_callbacks(app):
             return data
         else:
             return no_update
+
 
     
