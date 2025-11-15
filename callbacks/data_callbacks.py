@@ -86,8 +86,8 @@ def build_data_view(df, filename, hidden_columns = [], filter_query = ''):
                     page_current= 0,
                     page_size=15,
                     persistence = True,
-                    persistence_type = 'local',
-                    persisted_props = ['page_current', 'selected_columns', 'selected_rows'],
+                    # persistence_type = 'memory',
+                    # persisted_props = ['page_current', 'selected_columns', 'selected_rows'],
                     style_header = {
                         'textAlign': 'center',  # Центрируем заголовки
                         'backgroundColor': 'white',
@@ -238,11 +238,11 @@ def register_data_callbacks(app):
     ######################################## processing the data ########################################
     @app.callback(
            Output('storage', 'data', allow_duplicate=True),
-           Output('output-datatable', 'children'),
+           Output('output-datatable', 'children', allow_duplicate=True),
            Input('upload-data', 'contents'),  # Триггер
            State('upload-data', 'filename'),  # Дополнительные данные
            State('storage', 'data'),
-           prevent_initial_call=True
+           prevent_initial_call='initial_duplicate'
     )
     def upload_data(contents, filename, storage):
         if not contents:
@@ -263,7 +263,7 @@ def register_data_callbacks(app):
             'hidden_columns': [],
             'filter_query': '',
             }
-
+            print("✅ storage сброшен")
         except Exception as e:
             print(f"Data upload error: {e}")
             raise PreventUpdate
@@ -272,7 +272,7 @@ def register_data_callbacks(app):
     ######################################## processing the data table ########################################
     @app.callback(Output('output-datatable', 'children', allow_duplicate=True),
                   Input('storage', 'data'),
-                  prevent_initial_call='initial_duplicate')
+                  prevent_initial_call=True)
     def restore_table(storage: dict):
         if not storage or not storage.get('data') or storage['data'].get('df') in [None, '[]']:
             return html.P('Загрузите файл данных')
@@ -293,39 +293,39 @@ def register_data_callbacks(app):
         else:
             return False, True
 
-    @app.callback(Output('df-table', 'hidden_columns'),
-                  Input('df-table', 'hidden_columns'),
-                  State('data-file', 'data'))
-    def change_hidden_columns(hidden_columns, data):
-        if data['data']!='[]':
-            df = pd.read_json(io.StringIO(data['data']), orient='records')
-            return list(set(hidden_columns)& set(df.columns)) if hidden_columns else []
-        return no_update
+    # @app.callback(Output('df-table', 'hidden_columns'),
+    #               Input('df-table', 'hidden_columns'),
+    #               State('data-file', 'data'))
+    # def change_hidden_columns(hidden_columns, data):
+    #     if data['data']!='[]':
+    #         df = pd.read_json(io.StringIO(data['data']), orient='records')
+    #         return list(set(hidden_columns)& set(df.columns)) if hidden_columns else []
+    #     return no_update
     
-    @app.callback(
-        Output('storage', 'data', allow_duplicate=True),
-        Input('df-table', 'hidden_columns'),
-        Input('df-table', 'filter_query'),
-        State('storage', 'data'),
-        prevent_initial_call=True
-    )
-    def sync_hidden_columns(hidden_columns, filter_query, storage):
-        if storage is None or not storage.get('data') or storage['data'].get('df') in [None, '[]']:
-            raise PreventUpdate
+    # @app.callback(
+    #     Output('storage', 'data', allow_duplicate=True),
+    #     Input('df-table', 'hidden_columns'),
+    #     Input('df-table', 'filter_query'),
+    #     State('storage', 'data'),
+    #     prevent_initial_call=True
+    # )
+    # def sync_hidden_columns(hidden_columns, filter_query, storage):
+    #     if storage is None or not storage.get('data') or storage['data'].get('df') in [None, '[]']:
+    #         raise PreventUpdate
 
-        storage_data = storage['data']
+    #     storage_data = storage['data']
 
-        try:
-            df = pd.read_json(io.StringIO(storage_data['df']), orient='records')
-        except Exception:
-            raise PreventUpdate
+    #     try:
+    #         df = pd.read_json(io.StringIO(storage_data['df']), orient='records')
+    #     except Exception:
+    #         raise PreventUpdate
 
-        cols = list(df.columns)
-        allowed = [c for c in (hidden_columns or []) if c in cols]
-        storage_data['hidden_columns'] = allowed
-        storage['data'] = storage_data
-        storage['data']['filter_query'] = filter_query or ''
-        return storage
+    #     cols = list(df.columns)
+    #     allowed = [c for c in (hidden_columns or []) if c in cols]
+    #     storage_data['hidden_columns'] = allowed
+    #     storage['data'] = storage_data
+    #     storage['data']['filter_query'] = filter_query or ''
+    #     return storage
         
     @app.callback(Output('download-data', 'data'),
               Input('download-data-btn', 'n_clicks'),
@@ -356,23 +356,51 @@ def register_data_callbacks(app):
         else:
             return no_update
 
-    @app.callback(Output('data-file', 'data', allow_duplicate=True),
-              Input('df-table', 'data'),
-              State('df-table', 'hidden_columns'),
-              State('raw-data', 'data'),
-              prevent_initial_call = True)
-    def set_table(new_data, hidden_columns, data):
-        if new_data and new_data!=[]:
-            hidden_columns = list(hidden_columns) if hidden_columns else []
-            if 'is_null' in hidden_columns:
-                hidden_columns.remove('is_null')
-                data['hidden_columns'] = hidden_columns
-            df = pd.read_json(io.StringIO(json.dumps(new_data)))
-            df['NA'] = (df.isna().any(axis=1) | (df == '').any(axis=1)).astype(int)
-            data['data'] = df.to_json(orient='records')
-            return data
-        else:
-            return no_update
-
+    # @app.callback(Output('data-file', 'data', allow_duplicate=True),
+    #           Input('df-table', 'data'),
+    #           State('df-table', 'hidden_columns'),
+    #           State('raw-data', 'data'),
+    #           prevent_initial_call = True)
+    # def set_table(new_data, hidden_columns, data):
+    #     if new_data and new_data!=[]:
+    #         hidden_columns = list(hidden_columns) if hidden_columns else []
+    #         if 'is_null' in hidden_columns:
+    #             hidden_columns.remove('is_null')
+    #             data['hidden_columns'] = hidden_columns
+    #         df = pd.read_json(io.StringIO(json.dumps(new_data)))
+    #         df['NA'] = (df.isna().any(axis=1) | (df == '').any(axis=1)).astype(int)
+    #         data['data'] = df.to_json(orient='records')
+    #         return data
+    #     else:
+    #         return no_update
+    
+    @app.callback(
+        Output('storage', 'data', allow_duplicate=True),
+        Input('df-table', 'data'),
+        Input('df-table', 'hidden_columns'),
+        State('storage', 'data'),
+        prevent_initial_call=True
+    )
+    def save_table_edits(all_table_data, hidden_columns, storage):
+        """Обновляем данные в storage при любом редактировании таблицы"""
+        if not storage or not storage.get("data"):
+            raise PreventUpdate
+        if not all_table_data or len(all_table_data) == 0 or all_table_data[0] is None:
+            raise PreventUpdate
+    
+        try:
+            df = pd.DataFrame(all_table_data)
+            df["NA"] = (df.isna().any(axis=1) | (df == "").any(axis=1)).astype(int)
+            storage["data"]['df'] = df.to_json(orient="records")
+            storage['data']['hidden_columns'] = hidden_columns
+            print("✅ Изменения сохранены в storage")
+            print(storage['data']['hidden_columns'])
+        except Exception as e:
+            print("Ошибка при сохранении таблицы:", e)
+            raise PreventUpdate
+    
+        return storage
+        
+        
 
     

@@ -1,4 +1,4 @@
-from dash import html, Input, Output, State
+from dash import html, Input, Output, State, dcc
 from dash import ctx, no_update
 from dash.dependencies import MATCH
 
@@ -56,14 +56,17 @@ def register_text_callbacks(app):
 
     @app.callback(Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
             Input({'index':MATCH, 'type':'textarea-example'}, 'value'),
-            Input({'index':MATCH, 'type':'size-slider-text'}, 'value'),
+            # Input({'index':MATCH, 'type':'size-slider-text'}, 'value'),
             Input({'index':MATCH, 'type':'iframe-code'}, 'value'), 
-            Input({'index':MATCH, 'type':'upload-image'}, 'contents'), prevent_initial_call=True
+            Input({'index':MATCH, 'type':'upload-image'}, 'contents'), 
+            Input({'index':MATCH, 'type':'sheet'}, 'value'),
+            prevent_initial_call=True
         )
-    def update_output(text, size, iframe_code, images_content):
+    def update_output(text, iframe_code, images_content, sheet):
         res = []
-        for p in text.splitlines():
-            res.append(html.P(p,style = {'font-size': f'{size}pt'}))
+        # for p in text.splitlines():
+        
+        res.append(dcc.Markdown(text))
             
         res_imgs = []
         if images_content:

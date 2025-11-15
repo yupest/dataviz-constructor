@@ -2,6 +2,7 @@ from dash import html, Input, Output, State, no_update, ctx
 from dash.exceptions import PreventUpdate
 import copy
 import json
+import markdown as md
 
 def register_essay_callbacks(app):
     # КОЛБЭКИ ДЛЯ ВЫЧИСЛИТЕЛЬНОГО ЭССЕ
@@ -72,6 +73,9 @@ def register_essay_callbacks(app):
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.plot.ly/plotly-3.1.0-rc.0.min.js" charset="utf-8"></script>
     <script src="https://cdn.jsdelivr.net/gh/timdream/wordcloud2.js@gh-pages/src/wordcloud2.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.11.1/styles/default.min.css">
+    <script src="https://unpkg.com/@highlightjs/cdn-assets@11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
     <style>
         body {{
             font-family: Arial, sans-serif;
@@ -152,6 +156,32 @@ def register_essay_callbacks(app):
         }}
         .wordcloud-canvas {{
             background: white;
+        }}
+        
+        .markdown-content {{
+            color: black;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            padding: 10px;
+            box-sizing: border-box;
+        }}
+        
+        .markdown-content h1, 
+        .markdown-content h2, 
+        .markdown-content h3 {{
+            margin-top: 0;
+            margin-bottom: 10px;
+        }}
+        
+        .markdown-content p {{
+            margin-bottom: 10px;
+        }}
+        
+        .markdown-content ul, 
+        .markdown-content ol {{
+            margin-left: 20px;
+            margin-bottom: 10px;
         }}
         
         @media (max-width: 768px) {{
@@ -266,7 +296,7 @@ def register_essay_callbacks(app):
 
         for i, content in enumerate(essay, 1):
             comp = content['props']['children'][0]['props']['children']
-            print(comp)
+            # print(comp)
             if ('type' in comp) and comp['type'] == 'Graph':
                 figure_data = comp['props']['figure']
                 container_id = f"plot-{i}"
@@ -309,13 +339,34 @@ def register_essay_callbacks(app):
                 try:
                     text_blocks = []
                     for item in comp:
-                        if item['type'] == 'P':
-                            text = item['props']['children']
-                            text_style = '; '.join([f'{k}: {v}' for k,v in item['props']['style'].items()])
+                        # if item['type'] == 'P':
+                        #     text = item['props']['children']
+                        #     text_style = '; '.join([f'{k}: {v}' for k,v in item['props']['style'].items()])
+                        #     text_blocks.append(f'''
+                        #     <div class="visualization">
+                        #         <div class="text-content" style = "{text_style}">
+                        #             {text}
+                        #         </div>
+                        #     </div>
+                        #     ''')
+                        if item['type'] == 'Markdown':
+                            markdown_text = item['props']['children']
+                            md_content = md.markdown(markdown_text, extensions = [
+                                            'fenced_code',      # Блоки кода с ```
+                                            'tables',           # Таблицы
+                                            'toc',              # Оглавление
+                                            'nl2br',            # Переносы строк
+                                            'sane_lists'        # Умные списки
+                                        ])
+                            
+                            text_style = ''
+                            if 'style' in item['props']:
+                                text_style = '; '.join([f'{k}: {v}' for k,v in item['props']['style'].items()])
+                            
                             text_blocks.append(f'''
-                            <div class="visualization">
-                                <div class="text-content" style = "{text_style}">
-                                    {text}
+                            <div class="visualization" style = "{text_style}">
+                                <div class="markdown-content">
+                                    {md_content}
                                 </div>
                             </div>
                             ''')
@@ -327,7 +378,7 @@ def register_essay_callbacks(app):
                             </div>
                             ''')
                         elif item['type'] == 'Iframe':
-                            print(item)
+                            # print(item)
                             type_src = 'srcDoc' if 'srcDoc' in item['props'] else 'src'
                             iframe_content = item['props'].get(type_src, '')
                             text_blocks.append(f'''

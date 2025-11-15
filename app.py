@@ -10,7 +10,7 @@ from callbacks import register_all_callbacks
 
 
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.LUMEN, 'https://codepen.io/chriddyp/pen/bWLwgP.css' ], suppress_callback_exceptions=True)
+app = Dash(__name__, external_stylesheets=[dbc.themes.LUMEN, '/assets/bWLwgP.css' ], suppress_callback_exceptions=True)
 server = app.server
 
 app.layout = html.Div([
@@ -25,6 +25,10 @@ app.layout = html.Div([
                 html.Img(
                     src='https://isu.ru/export/sites/isu/ru/media/.galleries/images/isu_black.png',
                     style={'width': '45%'}
+                ),
+                html.Img(
+                    src='https://static.tildacdn.com/tild6231-6235-4131-b239-313435643830/rsv_ntojunior_2024.svg',
+                    style={'width': '80%'}
                 )
             ], style={
                 'display': 'flex',
@@ -52,16 +56,27 @@ app.layout = html.Div([
         # Лого RSV (правое)
         dbc.Col([
             html.Div([
-                html.Img(
-                    src='https://static.tildacdn.com/tild6231-6235-4131-b239-313435643830/rsv_ntojunior_2024.svg',
-                    style={'width': '80%'}
-                )
+                # html.Img(
+                #     src='https://static.tildacdn.com/tild6231-6235-4131-b239-313435643830/rsv_ntojunior_2024.svg',
+                #     style={'width': '80%'}
+                # ),
+                dcc.Upload(
+                    id='upload-project',
+                    children=html.Div([html.Button('Загрузить проект', id = 'set-project', n_clicks=0, style=get_btn_style("up-loading")),
+                                       dbc.Tooltip("Можно загрузить проект до 5 мб.",is_open=False,target='upload-project')]
+                                      ),
+                    multiple=False,
+
+                ),
+                html.Button('Скачать проект', id='save-project', n_clicks=0, style=get_btn_style("download")),
+                dcc.Download(id="download-project")
             ], style={
                 'display': 'flex',
                 'alignItems': 'center',
                 'justifyContent': 'flex-end',
                 'height': '100%'
             })
+                
         ], width=3, style={'padding-right': '14px'})
     ], align='center', style={'height': '100%', 'margin-top':'5px', 'margin-bottom':'5px'}),
     dcc.Tabs(id = 'tabs-menu', children = [dcc.Tab(label='Данные', children = [
@@ -234,21 +249,8 @@ app.layout = html.Div([
                                           html.Button('❌', style = {'margin':'10px 0px 5px 2px','disabled':True}), ' Удаление текущего листа', html.Br(),
                                           'Результат визуализации с каждого листа добавляется автоматически в дашборд',html.Br(),
                                           html.H5('Дашборд'),
-                                          'Каждый блок с визуализацией можно перемещать за верхний край и масштабировать за правый нижний угол',html.Br(),
-                                          html.Button('Введите название дашборда', style = {'margin':'10px 0px 5px 2px','disabled':True}), ' Задаёт название для дашборда, в том числе для локального файла при сохранении.',html.Br(),
-                                          html.Button('Скачать html-дашборд',  style = {**get_btn_style('download'), 'margin':'10px 0px 5px 2px','disabled':True}), 
-                                          ' Скачать дашборд в формате html: все визуализации (кроме облака слов) выгружаются в локальный файл.',
-                                          html.H5('Вычислительное эссе'),
-                                          'Каждый лист в колонке ', html.B('Порядок листов в эссе'), ''' можно перетаскивать для изменения порядка отображения
-                                          и включать/выключать видимость листов с помощью чекбоксов (по умолчанию все листы скрыты).''',html.Br(),
-                                          'При нажатии на ', html.B('Название листа'),' переключаются режимы сортировки листов по названию (возрастающий/убывающий/ручная сортировка).', html.Br(),
-                                          html.Button('Применить изменения',  style = {**BTN_style, 'disabled':True}), 
-                                          ' Применение заданного порядка отображения и видимости листов к вычислительному эссе.',html.Br(),
-                                          html.Button('Введите название эссе', style = {'margin':'10px 0px 5px 2px','disabled':True}), ' Задаёт название для эссе, в том числе для локального файла при сохранении.',html.Br(),
-                                          html.Button('Скачать html-эссе',  style = {**get_btn_style('download'),'disabled':True}), 
-                                          ' Скачать вычислительное эссе в формате html: все отображаемые в эссе визуализации (кроме облака слов) выгружаются в локальный файл.',html.Br(),
-                                          'Перед скачиванием необходимо обязательно применить изменения!',html.Br(),
-
+                                          'Каждый блок с визуализацией можно перемещать за верхний край и масштабировать за левый нижний угол',html.Br(),
+                                          html.Button('Скачать html-дашборд',  style = {**get_btn_style('download'), 'margin':'10px 0px 5px 2px','disabled':True}), ' Скачать дашборд в формате html: все визуализации (кроме облака слов) выгружаются в локальный файл.'
                                           ], fluid = True, style = {'width':'90%'}))
     ], style = tabs_styles)
 ])
@@ -257,4 +259,4 @@ register_all_callbacks(app)
 
 # running the server
 if __name__ == '__main__':
-    app.run(debug = False)
+    app.run(debug = True)

@@ -1,4 +1,4 @@
-from dash import dcc, Input, Output, no_update
+from dash import dcc, Input, State, Output, no_update
 import plotly.express as px
 from dash.dependencies import MATCH
 import pandas as pd
@@ -41,11 +41,12 @@ def register_barchart_callbacks(app):
             return name, style, style
 
     @app.callback(Output({'index':MATCH, 'type':'value_filter-bar'}, 'options'),
-              Input('df-table','data'),
               Input({'index':MATCH, 'type':'filter-bar'}, 'value'),
+              State('storage','data'),
               prevent_initial_call=False)
-    def set_options_bar(data, filter_col):
-        df = pd.read_json(json.dumps(data), orient='records')
+    def set_options_bar(filter_col, storage):
+        data = storage['data']['df']
+        df = pd.read_json(data, orient='records')
         if not filter_col:
             return no_update
         return df[filter_col].unique()
@@ -60,10 +61,10 @@ def register_barchart_callbacks(app):
                    Input({'index':MATCH, 'type':'filter-bar'}, 'value'),
                    Input({'index':MATCH, 'type':'value_filter-bar'}, 'value'),
                    Input({'index':MATCH, 'type':'orientation'}, 'value'),
-                   Input('df-table','data'),
-                   Input('df-table','hidden_columns'),
+                   Input({'index':MATCH, 'type':'sheet'}, 'value'),
+                   State('storage','data'),
                    prevent_initial_call=True)
-    def make_bar(x_data, y_data, agg_data, barchart_name, creation_top, top_slider, filter_col, value_filter, orientation, data, hidden_columns):
+    def make_bar(x_data, y_data, agg_data, barchart_name, creation_top, top_slider, filter_col, value_filter, orientation, sheet, storage):
 
         if not x_data or not y_data:
             print('no', x_data, y_data)
@@ -72,7 +73,10 @@ def register_barchart_callbacks(app):
         ### dictionary for an aggregation ###
         d = {'sum': 'sum()', 'avg':'mean()', 'count': 'count()', 'countd': 'nunique()', 'min':'min()', 'max':'max()'}
 
-        df = pd.read_json(json.dumps(data), orient='records')
+        data = storage['data']['df']
+        hidden_columns = storage['data']['hidden_columns']
+        print(f'Скрытые колонки в барчарте {hidden_columns}')
+        df = pd.read_json(data, orient='records')
         
         cols = ['NA'] if 'NA' in df.columns else []
         cols += hidden_columns if hidden_columns else []

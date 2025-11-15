@@ -6,8 +6,51 @@ from dash.exceptions import PreventUpdate
 from .utils import *
 import copy
 import json
+import base64
+import io
 
 def register_tabs_callbacks(app):
+    
+    @app.callback(Output('storage', 'data'),
+              Input('upload-project', 'contents'),  # Триггер
+              prevent_initial_call=True)
+    def upload_project(contents):
+        if not contents:
+            print('not contents')
+            raise PreventUpdate
+            
+        storage = ensure_app_state(None, True)
+        try:
+            content_type, content_string = contents.split(',')
+            decoded = base64.b64decode(content_string)
+            
+            file_size_mb = len(decoded) / (1024 * 1024)
+        
+            if file_size_mb > 4.5:  # Близко к лимиту 5MB
+                print(f"⚠️ Файл слишком большой ({file_size_mb:.2f} MB). Максимум: 5MB")
+                return no_update
+            
+            content = decoded.decode('utf-8')
+            storage = json.loads(content)
+        except Exception as e:
+            print(f"Project upload error: {e}")
+            raise PreventUpdate
+        
+        return storage
+    
+    
+    @app.callback(Output('download-project', 'data'),
+              Input('save-project', 'n_clicks'),
+              State('storage', 'data'),
+              prevent_initial_call=True)
+    def download_project(download_btn, storage):
+        return {
+             "content": json.dumps(storage),
+             "filename": f"project.json",
+             "type": "json"
+         }
+    
+        
     # При загрузке страницы читаем данные из хранилища
     @app.callback(
         Output("tabs", "children"),
@@ -37,7 +80,7 @@ def register_tabs_callbacks(app):
                             ], width={'size':4}),
 
                             dbc.Col([
-                                dcc.Loading(html.Div(id = {'index':'sheet_1', 'type' : 'chart'}, style = {'text-align':'center'}) , type="circle", style={"visibility":"visible", "filter": "blur(2px)", 'margin-top':'100px'})
+                                dcc.Loading(html.Div(id = {'index':'sheet_1', 'type' : 'chart'}, style = {'text-align':'left'}) , type="circle", style={"visibility":"visible", "filter": "blur(2px)", 'margin-top':'100px'})
                             ], width={'size':8})
 
                         ]),
@@ -144,18 +187,13 @@ def register_tabs_callbacks(app):
                                         ], width={'size':4}),
 
                                         dbc.Col([
-                                            dcc.Loading(html.Div(id = {'index':new_key, 'type' : 'chart'}, style = {'text-align':'center'}) , type="circle", style={"visibility":"visible", "filter": "blur(2px)", 'margin-top':'100px'})
+                                            dcc.Loading(html.Div(id = {'index':new_key, 'type' : 'chart'}, style = {'text-align':'left'}) , type="circle", style={"visibility":"visible", "filter": "blur(2px)", 'margin-top':'100px'})
                                         ], width={'size':8})
 
                                     ]),
                                 ], fluid=True)
                     ], style = tab_style, selected_style=tab_style)
                 storage["sheets"].update({new_key:{'tab_content':new_tab, 'name':new_tab_name}})
-                # tabs = tabs[:-2] + [new_tab]
-                # for tab in tabs[:-2]:
-                #     storage["sheets"][f"sheet_{tab['props']['value'].split(' ')[-1]}"]['tab_content'] = tab
-                # storage["sheets"][f'sheet_{number_tab}']['tab_content'] = new_tab
-                # storage["sheets"][f'sheet_{number_tab}']['name'] = new_tab_name
                 storage["active_tab"] = new_key
 
         else:
@@ -187,44 +225,24 @@ def register_tabs_callbacks(app):
             return storage
         return no_update
     
-    @app.callback(
-        Output('storage', 'data', allow_duplicate=True),
-        Input('df-table', 'data'),
-        State('storage', 'data'),
-        prevent_initial_call=True
-    )
-    def save_table_edits(all_table_data, storage):
-        """Обновляем данные в storage при любом редактировании таблицы"""
-        if not storage or not storage.get("data"):
-            raise PreventUpdate
-        if not all_table_data or len(all_table_data) == 0 or all_table_data[0] is None:
-            raise PreventUpdate
 
-        try:
-            df = pd.DataFrame(all_table_data)
-            df["NA"] = (df.isna().any(axis=1) | (df == "").any(axis=1)).astype(int)
-            storage["data"]['df'] = df.to_json(orient="records")
-            print("✅ Изменения сохранены в storage")
-        except Exception as e:
-            print("Ошибка при сохранении таблицы:", e)
-            raise PreventUpdate
-
-        return storage
     
     @app.callback(Output({'index': MATCH, 'type':'menu'}, 'children'),
               Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
               Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
               Input({'index': MATCH, 'type':'chart_type'}, 'value'),
               State({'index': MATCH, 'type':'chart_type'}, 'id'),
-              State('df-table', 'data'),
-              State('df-table', 'hidden_columns'),
+              State('storage', 'data'),
               prevent_initial_call=True)
-    def generate_menu(chart_type, chart_id, data, hidden_columns):
+    def generate_menu(chart_type, chart_id, storage):
 
         current_index = chart_id['index']
         # print('generation', chart_type, current_index)
 
-        df = pd.read_json(json.dumps(data), orient='records')
+        data = storage['data']['df']
+        hidden_columns = storage['data']['hidden_columns']
+        
+        df = pd.read_json(data, orient='records')
 
         # print(hidden_columns)
         cols = ['NA'] if 'NA' in df.columns else []

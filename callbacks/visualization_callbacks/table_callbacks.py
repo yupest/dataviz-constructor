@@ -1,4 +1,4 @@
-from dash import dcc, Input, Output, no_update
+from dash import dcc, Input, Output, State, no_update
 import plotly.express as px
 from dash.dependencies import MATCH
 import numpy as np
@@ -46,18 +46,17 @@ def register_table_callbacks(app):
             return name, style, style
 
     @app.callback(Output({'index':MATCH, 'type':'value_filter-table'}, 'options'),
-              Input('df-table','data'),
               Input({'index':MATCH, 'type':'filter-table'}, 'value'),
+              State('storage','data'),
               prevent_initial_call=False)
-    def set_options_table(data, filter_col):
-        df = pd.read_json(json.dumps(data), orient='records')
+    def set_options_table(filter_col, storage):
+        data = storage['data']['df']
+        df = pd.read_json(data, orient='records')
         if not filter_col:
             return no_update
         return df[filter_col].unique()
 
     @app.callback(Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
-                Input('df-table','data'),
-                Input('df-table','hidden_columns'),
                 Input({'index':MATCH, 'type':'correlation'}, 'value'),
                 Input({'index':MATCH, 'type':'xaxis-table'},'value'),
                 Input({'index':MATCH, 'type':'yaxis-table'}, 'value'),
@@ -67,9 +66,13 @@ def register_table_callbacks(app):
                 Input({'index':MATCH, 'type':'filter-table'}, 'value'),
                 Input({'index':MATCH, 'type':'value_filter-table'}, 'value'),
                 Input({'index':MATCH, 'type':'name-table'},'value'),
+                Input({'index':MATCH, 'type':'sheet'}, 'value'),
+                State('storage','data'),
                 prevent_initial_call=True)
-    def make_table(data, hidden_columns, correlation, x_data, y_data, z_data, corr_type, agg_data, filter_col, value_filter, chart_name):
-        df = pd.read_json(json.dumps(data), orient='records')
+    def make_table(correlation, x_data, y_data, z_data, corr_type, agg_data, filter_col, value_filter, chart_name, sheet, storage):
+        data = storage['data']['df']
+        hidden_columns = storage['data']['hidden_columns']
+        df = pd.read_json(data, orient='records')
         cols = ['NA'] if 'NA' in df.columns else []
         cols += hidden_columns if hidden_columns else []
         df = df.drop(columns = cols)

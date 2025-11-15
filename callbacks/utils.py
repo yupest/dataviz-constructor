@@ -40,7 +40,7 @@ custom_style_tab = {
     'padding-left': '35px' }
 
 BTN_style = {'margin':'10px 0px 5px 2px',
-             'backgroundImage':'url("https://github.com/yupest/nto/blob/master/src/{btn}.png?raw=true")',
+             'backgroundImage':'url("/assets/src/{btn}.png")',
              'backgroundRepeat': 'no-repeat',
              'backgroundPosition': '10px center',
              'backgroundSize': '20px',
@@ -311,15 +311,15 @@ def get_menu_table(list_color_cols, ind):
 def get_menu_text(current_index):
     return [html.P("Название листа", style = P_STYLE),
             dcc.Input(id={'index':current_index, 'type':"name-text"}, type="text", placeholder="Название", style = INPUT_STYLE, persistence='local'),
-            html.P("Текст", style = P_STYLE),
+            html.P("Текст (Markdown)", style = P_STYLE),
             dcc.Textarea(id={'index':current_index, 'type':'textarea-example'},
                          value='',
                          style={'width': '100%', 'height': 400, 'resize': 'none', 'align':'top'},
                          persistence='local'),
-            html.P("Размер текста", style = P_STYLE),
-            dcc.Slider(min=12, max=32, step=1, value=18, id={'index':current_index, 'type':'size-slider-text'}, marks=None,
-                       tooltip={"placement": "bottom", "always_visible": True}, persistence='local'),
-            html.P('Iframe code (HTML) / URL', style=P_STYLE),
+            # html.P("Размер текста", style = P_STYLE),
+            # dcc.Slider(min=12, max=32, step=1, value=18, id={'index':current_index, 'type':'size-slider-text'}, marks=None,
+            #            tooltip={"placement": "bottom", "always_visible": True}, persistence='local'),
+            html.P('IFrame code (HTML)', style=P_STYLE),
             dcc.Textarea(id={'index':current_index, 'type':'iframe-code'}, placeholder='Вставьте HTML iframe или URL...', style={'width':'100%', 'height':'120px'}, persistence='local'),
             html.P('Загрузить изображение', style = P_STYLE),
             dcc.Upload(
@@ -356,6 +356,5 @@ def get_menu_text(current_index):
             # ),
             
             
-            # html.Div(id={'index':current_index, 'type':'uploaded-files'})
-
+            html.Div(id={'index':current_index, 'type':'uploaded-files'})
             ]
