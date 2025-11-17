@@ -37,7 +37,7 @@ app.layout = html.Div([
         # Лого RSV (правое)
         dbc.Col([
             html.Div([
-                html.Div([dcc.Dropdown(id = 'template', options = [{'label':i, 'value':i} for i in pio.templates], value = 'plotly', clearable = False, style = {'height': '38px'}),
+                html.Div([dcc.Dropdown(id = 'template', options = [{'label':i, 'value':i} for i in pio.templates], value = 'plotly', clearable = False, persistence='local', style = {'height': '38px'}),
                           dbc.Tooltip("Тема проекта", is_open=False, target='template')], 
                          style = {'width': '180px','paddingTop': '5px'}
                         ),
