@@ -25,9 +25,10 @@ def register_piechart_callbacks(app):
                Input({'index':MATCH, 'type':'value_filter-pie'}, 'value'),
                Input({'index':MATCH, 'type':'name-chart'},'value'),
                Input({'index':MATCH, 'type':'sheet'}, 'value'),
+               Input('template', 'value'),
                State('storage','data'),
               prevent_initial_call=True)
-    def make_pie(x_data, y_data, sliderSectors, agg_data, filter_col, value_filter, piechart_name, sheet, storage):
+    def make_pie(x_data, y_data, sliderSectors, agg_data, filter_col, value_filter, piechart_name, sheet, template, storage):
         
         if not x_data or not y_data:
             return []
@@ -57,7 +58,7 @@ def register_piechart_callbacks(app):
              df_temp.loc[sliderSectors:, x_data] = 'Другое'
              df_temp = df_temp.groupby(x_data).sum()
 
-        pie_fig = px.pie(df_temp, values=y_data, names=df_temp.index, color_discrete_sequence=px.colors.qualitative.Plotly)
+        pie_fig = px.pie(df_temp, values=y_data, names=df_temp.index, color_discrete_sequence=px.colors.qualitative.Plotly, template = template)
         pie_fig.update_layout(
             title={
                 'text': piechart_name,

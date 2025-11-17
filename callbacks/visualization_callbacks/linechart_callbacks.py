@@ -25,9 +25,10 @@ def register_linechart_callbacks(app):
                Input({'index':MATCH, 'type':'value_filter-line'}, 'value'),
                Input({'index':MATCH, 'type':'name-chart'},'value'),
                Input({'index':MATCH, 'type':'sheet'}, 'value'),
+               Input('template', 'value'),
                State('storage','data'),
               prevent_initial_call=True)
-    def make_line(x_data, y_data, agg_data, filter_col, value_filter, linechart_name, sheet, storage):
+    def make_line(x_data, y_data, agg_data, filter_col, value_filter, linechart_name, sheet, template, storage):
 
         data = storage['data']['df']
         hidden_columns = storage['data']['hidden_columns']
@@ -49,7 +50,7 @@ def register_linechart_callbacks(app):
         r = {'nnn':nnn}
         exec('nnn = nnn.'+d[agg_data], r)
 
-        line_fig = px.line(r['nnn'], x=r['nnn'].index, y=y_data, color_discrete_sequence=px.colors.qualitative.Plotly)
+        line_fig = px.line(r['nnn'], x=r['nnn'].index, y=y_data, color_discrete_sequence=px.colors.qualitative.Plotly, template = template)
         line_fig.update_layout(
             title={
                 'text': linechart_name,

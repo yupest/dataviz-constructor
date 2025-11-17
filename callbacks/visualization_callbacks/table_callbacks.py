@@ -52,9 +52,10 @@ def register_table_callbacks(app):
         Input({'index':MATCH, 'type':'value_filter-table'}, 'value'),
         Input({'index':MATCH, 'type':'name-chart'},'value'),
         Input({'index':MATCH, 'type':'sheet'}, 'value'),
+        Input('template', 'value'),
         State('storage','data'),
         prevent_initial_call=True)
-    def make_table(correlation, x_data, y_data, z_data, corr_type, agg_data, filter_col, value_filter, chart_name, sheet, storage):
+    def make_table(correlation, x_data, y_data, z_data, corr_type, agg_data, filter_col, value_filter, chart_name, sheet, template, storage):
         data = storage['data']['df']
         hidden_columns = storage['data']['hidden_columns']
         df = pd.read_json(data, orient='records')
@@ -66,7 +67,7 @@ def register_table_callbacks(app):
 
         if correlation:
             cols = df.columns[np.array([df[i].dtype != 'object' for i in df.columns])].tolist()
-            table_chart = px.imshow(df[cols].corr(corr_type).round(3), text_auto=True, aspect="auto")
+            table_chart = px.imshow(df[cols].corr(corr_type).round(3), text_auto=True, aspect="auto", template = template)
 
         else:
             ### dictionary for an aggregation ###
@@ -80,7 +81,7 @@ def register_table_callbacks(app):
             exec('nnn = nnn.'+d[agg_data], r)
 
             df_temp = r['nnn'].reset_index().pivot(index=x_data, columns=y_data, values=z_data)
-            table_chart = px.imshow(df_temp.round(3), text_auto=True, zmax = df_temp.stack().quantile(0.75), zmin = df_temp.min().min(), aspect="auto")
+            table_chart = px.imshow(df_temp.round(3), text_auto=True, zmax = df_temp.stack().quantile(0.75), zmin = df_temp.min().min(), aspect="auto", template = template)
 
         table_chart.update_layout(
             title={

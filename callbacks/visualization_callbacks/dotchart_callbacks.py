@@ -17,10 +17,11 @@ def register_dotchart_callbacks(app):
         Input({'index':MATCH, 'type':'opacity-dot'}, 'value'),
         Input({'index':MATCH, 'type':'name-chart'},'value'),
         Input({'index':MATCH, 'type':'sheet'}, 'value'),
+        Input('template', 'value'),
         State('storage','data'),
         prevent_initial_call=True)
 
-    def make_scatter(x_data, y_data, tooltip, show_line, size_dot, size_data, color_data, opacity, dotchart_name, sheet, storage):
+    def make_scatter(x_data, y_data, tooltip, show_line, size_dot, size_data, color_data, opacity, dotchart_name, sheet, template, storage):
         data = storage['data']['df']
         hidden_columns = storage['data']['hidden_columns']
         
@@ -38,7 +39,7 @@ def register_dotchart_callbacks(app):
         # if cols!=[]:
         #     df = df.groupby(cols)[[x for x in [x_data, y_data, size_data] if x is not None]].mean().reset_index()
         dot_fig = px.scatter(df, x=x_data, y=y_data, size=size_data, hover_data=cols,
-                             color_discrete_sequence=px.colors.qualitative.Plotly, color=color_data, opacity = opacity/100)
+                             color_discrete_sequence=px.colors.qualitative.Plotly, color=color_data, opacity = opacity/100, template = template)
         dot_fig.update_layout(
             title={
                 'text': dotchart_name,

@@ -48,9 +48,10 @@ def register_barchart_callbacks(app):
                    Input({'index':MATCH, 'type':'value_filter-bar'}, 'value'),
                    Input({'index':MATCH, 'type':'orientation'}, 'value'),
                    Input({'index':MATCH, 'type':'sheet'}, 'value'),
+                   Input('template', 'value'),
                    State('storage','data'),
                    prevent_initial_call=True)
-    def make_bar(x_data, y_data, agg_data, barchart_name, creation_top, top_slider, filter_col, value_filter, orientation, sheet, storage):
+    def make_bar(x_data, y_data, agg_data, barchart_name, creation_top, top_slider, filter_col, value_filter, orientation, sheet, template, storage):
 
         if not x_data or not y_data:
             print('no', x_data, y_data)
@@ -98,7 +99,7 @@ def register_barchart_callbacks(app):
             x = df_temp.index
             y = y_data[0] if len(y_data)==1 else y_data
 
-        bar_fig = px.bar(df_temp, x=x, y=y, labels={'y':y_axis,'x': x_data}, orientation = o)
+        bar_fig = px.bar(df_temp, x=x, y=y, labels={'y':y_axis,'x': x_data}, orientation = o, template = template)
         bar_fig.update_layout(
             title={
                 'text': barchart_name,
