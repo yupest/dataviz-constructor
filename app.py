@@ -37,12 +37,14 @@ app.layout = html.Div([
         # Лого RSV (правое)
         dbc.Col([
             html.Div([
-                dcc.Dropdown(id = 'trmplate', options = [{'label':i, 'value':i} for i in pio.templates], value = 'plotly', 
-                             clearable = False, style = {'width': '180px','marginTop': '2px','height': '38px'}),
+                html.Div([dcc.Dropdown(id = 'template', options = [{'label':i, 'value':i} for i in pio.templates], value = 'plotly', clearable = False, style = {'height': '38px'}),
+                          dbc.Tooltip("Тема проекта", is_open=False, target='template')], 
+                         style = {'width': '180px','paddingTop': '5px'}
+                        ),
                 dcc.Upload(
                     id='upload-project',
                     children=html.Div([html.Button('Загрузить проект', id = 'set-project', n_clicks=0, style=get_btn_style("up-loading")),
-                                       dbc.Tooltip("Можно загрузить проект до 5 мб.",is_open=False,target='upload-project')]
+                                       dbc.Tooltip("Можно загрузить проект до 5 мб.", is_open=False, target='upload-project')]
                                       ),
                     multiple=False,
 
