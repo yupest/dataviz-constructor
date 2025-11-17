@@ -2,36 +2,8 @@ from dash import dcc, Input, Output, State, no_update
 import plotly.express as px
 from dash.dependencies import MATCH
 import pandas as pd
-import json
-
-# TODO: убрать стилевые константы в отдельный файл
-tab_style = {
-    'padding': '10px 10px',  # Универсальные отступы
-    'display': 'flex',
-    'alignItems': 'center',  # Вертикальное выравнивание содержимого
-    'justifyContent': 'center',  # Горизонтальное выравнивание
-    'textAlign': 'center',
-}
-custom_style_tab = {
-    'background-repeat': 'no-repeat',
-    'background-position': '10px center',
-    'background-size': '25px',
-    'padding-left': '35px' }
 
 def register_piechart_callbacks(app):
-    @app.callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-              Input({'index':MATCH, 'type':'name-pie'},'value'),
-              prevent_initial_call=True)
-    def rename_sheet_pie(name):
-        # print(name)
-        style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/pie.png?raw=true')"}
-        if not name:
-            return no_update, style, style
-        else:
-
-            return name, style, style
 
     @app.callback(Output({'index':MATCH, 'type':'value_filter-pie'}, 'options'),
               Input({'index':MATCH, 'type':'filter-pie'}, 'value'),
@@ -51,11 +23,15 @@ def register_piechart_callbacks(app):
                Input({'index':MATCH, 'type':'agg-pie'}, 'value'),
                Input({'index':MATCH, 'type':'filter-pie'}, 'value'),
                Input({'index':MATCH, 'type':'value_filter-pie'}, 'value'),
-               Input({'index':MATCH, 'type':'name-pie'},'value'),
+               Input({'index':MATCH, 'type':'name-chart'},'value'),
                Input({'index':MATCH, 'type':'sheet'}, 'value'),
                State('storage','data'),
               prevent_initial_call=True)
     def make_pie(x_data, y_data, sliderSectors, agg_data, filter_col, value_filter, piechart_name, sheet, storage):
+        
+        if not x_data or not y_data:
+            return []
+        
         data = storage['data']['df']
         hidden_columns = storage['data']['hidden_columns']
         

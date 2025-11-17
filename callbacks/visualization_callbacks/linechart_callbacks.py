@@ -2,37 +2,8 @@ from dash import dcc, Input, Output, State, no_update
 import plotly.express as px
 from dash.dependencies import MATCH
 import pandas as pd
-import json
-import io
-
-# TODO: убрать стилевые константы в отдельный файл
-tab_style = {
-    'padding': '10px 10px',  # Универсальные отступы
-    'display': 'flex',
-    'alignItems': 'center',  # Вертикальное выравнивание содержимого
-    'justifyContent': 'center',  # Горизонтальное выравнивание
-    'textAlign': 'center',
-}
-custom_style_tab = {
-    'background-repeat': 'no-repeat',
-    'background-position': '10px center',
-    'background-size': '25px',
-    'padding-left': '35px' }
 
 def register_linechart_callbacks(app):
-    @app.callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-              Input({'index':MATCH, 'type':'name-line'},'value'),
-              prevent_initial_call=True)
-    def rename_sheet_line(name):
-        print(name)
-        style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/line.png?raw=true')"}
-        if not name:
-            return no_update, style, style
-        else:
-
-            return name, style, style
 
     @app.callback(Output({'index':MATCH, 'type':'value_filter-line'}, 'options'),
               Input({'index':MATCH, 'type':'filter-line'}, 'value'),
@@ -52,7 +23,7 @@ def register_linechart_callbacks(app):
                Input({'index':MATCH, 'type':'agg-line'}, 'value'),
                Input({'index':MATCH, 'type':'filter-line'}, 'value'),
                Input({'index':MATCH, 'type':'value_filter-line'}, 'value'),
-               Input({'index':MATCH, 'type':'name-line'},'value'),
+               Input({'index':MATCH, 'type':'name-chart'},'value'),
                Input({'index':MATCH, 'type':'sheet'}, 'value'),
                State('storage','data'),
               prevent_initial_call=True)

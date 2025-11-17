@@ -26,20 +26,6 @@ def register_barchart_callbacks(app):
     def update_disabled_top_slider(value):
         return value == []
 
-    @app.callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-              Input({'index':MATCH, 'type':'name-bar'},'value'),
-              # State({'index':MATCH, 'type':'sheet'},'label'),
-              prevent_initial_call=True)
-    def rename_sheet_bar(name):
-        print(name)
-        style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/bar.png?raw=true')"}
-        if not name:
-            return no_update, style, style
-        else:
-            return name, style, style
-
     @app.callback(Output({'index':MATCH, 'type':'value_filter-bar'}, 'options'),
               Input({'index':MATCH, 'type':'filter-bar'}, 'value'),
               State('storage','data'),
@@ -55,7 +41,7 @@ def register_barchart_callbacks(app):
                    Input({'index':MATCH, 'type':'xaxis'},'value'),
                    Input({'index':MATCH, 'type':'yaxis'}, 'value'),
                    Input({'index':MATCH, 'type':'agg-bar'}, 'value'),
-                   Input({'index':MATCH, 'type':'name-bar'}, 'value'),
+                   Input({'index':MATCH, 'type':'name-chart'}, 'value'),
                    Input({'index':MATCH, 'type':'creation-top-bar'}, 'value'),
                    Input({'index':MATCH, 'type':'top-slider-bar'}, 'value'),
                    Input({'index':MATCH, 'type':'filter-bar'}, 'value'),

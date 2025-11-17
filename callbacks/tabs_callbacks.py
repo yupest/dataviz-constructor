@@ -226,6 +226,20 @@ def register_tabs_callbacks(app):
         return no_update
     
 
+    @app.callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
+              Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
+              Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
+              Input({'index':MATCH, 'type':'name-chart'},'value'),
+              State({'index': MATCH, 'type':'chart_type'}, 'value'),
+              # State({'index':MATCH, 'type':'sheet'},'label'),
+              prevent_initial_call=True)
+    def rename_sheet(name, type_chart):
+        print(name)
+        style = {**tab_style, **custom_style_tab, 'background-image':f"url('/assets/src/{type_chart}.png')"}
+        if not name:
+            return no_update, style, style
+        else:
+            return name, style, style
     
     @app.callback(Output({'index': MATCH, 'type':'menu'}, 'children'),
               Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
@@ -275,5 +289,5 @@ def register_tabs_callbacks(app):
             chart = get_menu_wordcloud(list_color_cols, current_index)
         elif chart_type=='text':
             chart = get_menu_text(current_index)
-        style = {**tab_style, **custom_style_tab, 'background-image':f"url('https://github.com/yupest/nto/blob/master/src/{chart_type}.png?raw=true')"}
+        style = {**tab_style, **custom_style_tab, 'background-image':f"url('/assets/src/{chart_type}.png')"}
         return chart, style, style   

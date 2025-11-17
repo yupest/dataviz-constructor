@@ -1,38 +1,12 @@
-from dash import Input, Output, State, no_update
+from dash import Input, Output, State
 from dash.exceptions import PreventUpdate
 from dash.dependencies import MATCH
 from dash_holoniq_wordcloud import DashWordcloud
 import pandas as pd
 import json
 
-# TODO: убрать стилевые константы в отдельный файл
-tab_style = {
-    'padding': '10px 10px',  # Универсальные отступы
-    'display': 'flex',
-    'alignItems': 'center',  # Вертикальное выравнивание содержимого
-    'justifyContent': 'center',  # Горизонтальное выравнивание
-    'textAlign': 'center',
-}
-custom_style_tab = {
-    'background-repeat': 'no-repeat',
-    'background-position': '10px center',
-    'background-size': '25px',
-    'padding-left': '35px' }
 
 def register_wordcloud_callbacks(app):
-    
-    @app.callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-              Input({'index':MATCH, 'type':'name-wordcloud'},'value'),
-              prevent_initial_call=True)
-    def rename_sheet_wordcloud(name):
-        style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/wordcloud.png?raw=true')"}
-        if not name:
-            return no_update, style, style
-        else:
-
-            return name, style, style
 
     @app.callback(Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
                Output({'index':MATCH, 'type':'frequency-slider-wordcloud'}, 'max', allow_duplicate=True),

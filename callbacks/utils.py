@@ -9,7 +9,7 @@ LIMIT_PAGE = 20
 type_diagrams = {'bar':'Столбчатая', 'line':'Линейная', 'dot':"Точечная", 'table':'Цветная таблица', 'pie':"Круговая", 'text':"Текст", 'wordcloud':"Облако слов"}
 
 icons = [{'label': html.Span([
-                    html.Img(src=f"https://github.com/yupest/nto/blob/master/src/{k}.png?raw=true", height=25),
+                    html.Img(src=f"/assets/src/{k}.png", height=25),
                     html.Span(v, style={ 'padding-left': 10})],
                    style={'align-items': 'center', 'justify-content': 'center'}),
           'value': k}  for k, v in type_diagrams.items()]
@@ -88,6 +88,8 @@ def ensure_app_state(state, reset=False):
 def get_menu_bar(list_color_cols, ind):
 
     return [html.Div([
+        html.P("Название графика", style = P_STYLE),
+        dcc.Input(id={'index':ind, 'type':"name-chart"}, type="text", placeholder="Название", debounce=True, style = INPUT_STYLE, persistence='local'),
         html.P("Ось X", style = P_STYLE),
         dcc.Dropdown(id={'index':ind, 'type':'xaxis'},
                      options=[x['options'] for x in list_color_cols], persistence='local'),
@@ -118,14 +120,14 @@ def get_menu_bar(list_color_cols, ind):
                 dbc.Col([html.P(" входит в ")], width = 2),
                 dbc.Col([dcc.Dropdown(id={'index':ind, 'type':'value_filter-bar'}, multi = True, persistence='local')], width = 5),
             ]),
-        html.P("Название графика", style = P_STYLE),
-        dcc.Input(id={'index':ind, 'type':"name-bar"}, type="text", placeholder="Название", debounce=True, style = INPUT_STYLE, persistence='local'),
-
         ]
     )]
 
 def get_menu_line(list_color_cols, ind):
     return [html.Div([
+        html.P("Название графика", style = P_STYLE),
+        dcc.Input(id={'index':ind, 'type':"name-chart"}, type="text", placeholder="Название", debounce=True, style = INPUT_STYLE, persistence='local'),
+        
         html.P("Ось X", style = P_STYLE),
         dcc.Dropdown(id={'index':ind, 'type':'xaxis'},
                      options=[x['options'] for x in list_color_cols], persistence='local'),
@@ -152,13 +154,14 @@ def get_menu_line(list_color_cols, ind):
                 dbc.Col([html.P(" входит в ")], width = 2),
                 dbc.Col([dcc.Dropdown(id={'index':ind, 'type':'value_filter-line'}, multi = True, persistence='local')], width = 5),
             ]),
-        html.P("Название графика", style = P_STYLE),
-        dcc.Input(id={'index':ind, 'type':"name-line"}, type="text", placeholder="Название", style = INPUT_STYLE, persistence='local'),
         ]
     )]
 
 def get_menu_wordcloud(list_color_cols, ind):
     return [html.Div([
+                html.P("Название графика", style = P_STYLE),
+                dcc.Input(id={'index':ind, 'type':"name-chart"}, type="text", placeholder="Название", debounce=True, style = INPUT_STYLE, persistence='local'),
+        
                 html.P("Текстовые данные", style = P_STYLE),
                 dcc.Dropdown(id={'index':ind, 'type':'column-wordcloud'},
                             options=[x['options'] for x in list_color_cols if x['type']=='object'],
@@ -181,9 +184,6 @@ def get_menu_wordcloud(list_color_cols, ind):
                 html.P("Масштаб сетки", style = P_STYLE),
                 dcc.Slider(min=3, max=25, step=1, value=15, id={'index':ind, 'type':'grid-slider-wordcloud'}, marks=None,
                             tooltip={"placement": "bottom", "always_visible": True}, persistence='local'),
-                html.P("Название листа", style = P_STYLE),
-                dcc.Input(id={'index':ind, 'type':"name-wordcloud"}, type="text", placeholder="Название", style = INPUT_STYLE, persistence='local'),
-
 
                 ]
             ),
@@ -200,6 +200,9 @@ def get_menu_wordcloud(list_color_cols, ind):
 def get_menu_scatter(list_color_cols, ind):
 
     return [html.Div([
+        html.P("Название графика", style = P_STYLE),
+        dcc.Input(id={'index':ind, 'type':"name-chart"}, type="text", placeholder="Название", debounce=True, style = INPUT_STYLE, persistence='local'),
+        
         html.P("Ось X", style = P_STYLE),
         dcc.Dropdown(id={'index':ind, 'type':'xaxis'},
                      options=[x['options'] for x in list_color_cols], persistence='local'),
@@ -225,13 +228,14 @@ def get_menu_scatter(list_color_cols, ind):
                value=50,
                id={'index':ind, 'type':'opacity-dot'},
                ),
-        html.P("Название графика", style = P_STYLE),
-        dcc.Input(id={'index':ind, 'type':"name-dot"}, type="text", placeholder="Название", style = INPUT_STYLE, persistence='local'),
-        ]
+       ]
     )]
 
 def get_menu_pie(list_color_cols, ind):
     return [html.Div([
+        html.P("Название графика", style = P_STYLE),
+        dcc.Input(id={'index':ind, 'type':"name-chart"}, type="text", placeholder="Название", debounce=True, style = INPUT_STYLE, persistence='local'),
+        
         html.P("Название секторов", style = P_STYLE),
         dcc.Dropdown(id={'index':ind, 'type':'xaxis'},
                      options=[x['options'] for x in list_color_cols], persistence='local'),
@@ -261,13 +265,14 @@ def get_menu_pie(list_color_cols, ind):
                 dbc.Col([html.P(" входит в ")], width = 2),
                 dbc.Col([dcc.Dropdown(id={'index':ind, 'type':'value_filter-pie'}, multi = True, persistence='local')], width = 5),
             ]),
-        html.P("Название графика", style = P_STYLE),
-        dcc.Input(id={'index':ind, 'type':"name-pie"}, type="text", placeholder="Название", style = INPUT_STYLE, persistence='local'),
         ]
     )]
 
 def get_menu_table(list_color_cols, ind):
     return [html.Div( [
+        html.P("Название графика", style = P_STYLE),
+        dcc.Input(id={'index':ind, 'type':"name-chart"}, type="text", placeholder="Название", debounce=True, style = INPUT_STYLE, persistence='local'),
+        
         html.Div(id = {'index':ind, 'type':'menu-columns-table'}, children = [
             html.P("Ось X", style = P_STYLE),
             dcc.Dropdown(id={'index':ind, 'type':'xaxis-table'},
@@ -303,16 +308,14 @@ def get_menu_table(list_color_cols, ind):
                 dbc.Col([html.P(" входит в ")], width = 2),
                 dbc.Col([dcc.Dropdown(id={'index':ind, 'type':'value_filter-table'}, multi = True, persistence='local')], width = 5),
             ]),
-        html.P("Название графика", style = P_STYLE),
-        dcc.Input(id={'index':ind, 'type':"name-table"}, type="text", placeholder="Название", style = INPUT_STYLE, persistence='local'),
         ]
     )]
 
-def get_menu_text(current_index):
-    return [html.P("Название листа", style = P_STYLE),
-            dcc.Input(id={'index':current_index, 'type':"name-text"}, type="text", placeholder="Название", style = INPUT_STYLE, persistence='local'),
+def get_menu_text(ind):
+    return [html.P("Название графика", style = P_STYLE),
+            dcc.Input(id={'index':ind, 'type':"name-chart"}, type="text", placeholder="Название", debounce=True, style = INPUT_STYLE, persistence='local'),
             html.P("Текст (Markdown)", style = P_STYLE),
-            dcc.Textarea(id={'index':current_index, 'type':'textarea-example'},
+            dcc.Textarea(id={'index':ind, 'type':'textarea-example'},
                          value='',
                          style={'width': '100%', 'height': 400, 'resize': 'none', 'align':'top'},
                          persistence='local'),
@@ -320,10 +323,10 @@ def get_menu_text(current_index):
             # dcc.Slider(min=12, max=32, step=1, value=18, id={'index':current_index, 'type':'size-slider-text'}, marks=None,
             #            tooltip={"placement": "bottom", "always_visible": True}, persistence='local'),
             html.P('IFrame code (HTML)', style=P_STYLE),
-            dcc.Textarea(id={'index':current_index, 'type':'iframe-code'}, placeholder='Вставьте HTML iframe или URL...', style={'width':'100%', 'height':'120px'}, persistence='local'),
+            dcc.Textarea(id={'index':ind, 'type':'iframe-code'}, placeholder='Вставьте HTML iframe или URL...', style={'width':'100%', 'height':'120px'}, persistence='local'),
             html.P('Загрузить изображение', style = P_STYLE),
             dcc.Upload(
-                id={'index':current_index, 'type':'upload-image'},
+                id={'index':ind, 'type':'upload-image'},
                 children=html.Div(['Перетащите или ', html.A('выберите изображение')]),
                 style={
                     'width': '100%',
@@ -337,7 +340,7 @@ def get_menu_text(current_index):
                 },
                 multiple=True
             ),
-            html.Div(id={'index':current_index, 'type':'uploaded-images'}),
+            html.Div(id={'index':ind, 'type':'uploaded-images'}),
             # html.P('Прикрепить файл', style = P_STYLE),
             # dcc.Upload(
             #     id={'index':current_index, 'type':'upload-file-text'},
@@ -355,6 +358,5 @@ def get_menu_text(current_index):
             #     multiple=False
             # ),
             
-            
-            html.Div(id={'index':current_index, 'type':'uploaded-files'})
+            html.Div(id={'index':ind, 'type':'uploaded-files'})
             ]

@@ -3,7 +3,6 @@ import plotly.express as px
 from dash.dependencies import MATCH
 import numpy as np
 import pandas as pd
-import json
 
 # TODO: убрать стилевые константы в отдельный файл
 tab_style = {
@@ -22,33 +21,19 @@ custom_style_tab = {
 def register_table_callbacks(app):
    
     @app.callback(Output({'index':MATCH, 'type':'menu-columns-table'}, 'style'),
-              Output({'index':MATCH, 'type':'correlation-type-table'}, 'style'),
-              Input({'index':MATCH, 'type':'correlation'}, 'value'),
-              prevent_initial_call=False)
+        Output({'index':MATCH, 'type':'correlation-type-table'}, 'style'),
+        Input({'index':MATCH, 'type':'correlation'}, 'value'),
+        prevent_initial_call=False)
     def update_disabled_columns(value):
         not_value = {'display':'none'} if value==[] else {}
         value = {} if value==[] else {'display':'none'}
-        # print(value, not_value)
         return value, not_value
 
-    @app.callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-              Input({'index':MATCH, 'type':'name-table'},'value'),
-              prevent_initial_call=True)
-    def rename_sheet_table(name):
-        print(name)
-        style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/table.png?raw=true')"}
-        if not name:
-            return no_update, style, style
-        else:
-
-            return name, style, style
 
     @app.callback(Output({'index':MATCH, 'type':'value_filter-table'}, 'options'),
-              Input({'index':MATCH, 'type':'filter-table'}, 'value'),
-              State('storage','data'),
-              prevent_initial_call=False)
+        Input({'index':MATCH, 'type':'filter-table'}, 'value'),
+        State('storage','data'),
+        prevent_initial_call=False)
     def set_options_table(filter_col, storage):
         data = storage['data']['df']
         df = pd.read_json(data, orient='records')
@@ -57,18 +42,18 @@ def register_table_callbacks(app):
         return df[filter_col].unique()
 
     @app.callback(Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
-                Input({'index':MATCH, 'type':'correlation'}, 'value'),
-                Input({'index':MATCH, 'type':'xaxis-table'},'value'),
-                Input({'index':MATCH, 'type':'yaxis-table'}, 'value'),
-                Input({'index':MATCH, 'type':'zaxis-table'}, 'value'),
-                Input({'index':MATCH, 'type':'correlation-type-table'}, 'value'),
-                Input({'index':MATCH, 'type':'agg-table'}, 'value'),
-                Input({'index':MATCH, 'type':'filter-table'}, 'value'),
-                Input({'index':MATCH, 'type':'value_filter-table'}, 'value'),
-                Input({'index':MATCH, 'type':'name-table'},'value'),
-                Input({'index':MATCH, 'type':'sheet'}, 'value'),
-                State('storage','data'),
-                prevent_initial_call=True)
+        Input({'index':MATCH, 'type':'correlation'}, 'value'),
+        Input({'index':MATCH, 'type':'xaxis-table'},'value'),
+        Input({'index':MATCH, 'type':'yaxis-table'}, 'value'),
+        Input({'index':MATCH, 'type':'zaxis-table'}, 'value'),
+        Input({'index':MATCH, 'type':'correlation-type-table'}, 'value'),
+        Input({'index':MATCH, 'type':'agg-table'}, 'value'),
+        Input({'index':MATCH, 'type':'filter-table'}, 'value'),
+        Input({'index':MATCH, 'type':'value_filter-table'}, 'value'),
+        Input({'index':MATCH, 'type':'name-chart'},'value'),
+        Input({'index':MATCH, 'type':'sheet'}, 'value'),
+        State('storage','data'),
+        prevent_initial_call=True)
     def make_table(correlation, x_data, y_data, z_data, corr_type, agg_data, filter_col, value_filter, chart_name, sheet, storage):
         data = storage['data']['df']
         hidden_columns = storage['data']['hidden_columns']
