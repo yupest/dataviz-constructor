@@ -16,7 +16,6 @@ server = app.server
 
 app.layout = html.Div([
     dcc.Store(id="storage", storage_type="local"),
-    dcc.Store(id="essay-order", storage_type="local", data=[]),  # Хранилище порядка листов для эссе
     
     dbc.Row([
 
@@ -81,12 +80,10 @@ app.layout = html.Div([
             ),
             dcc.Download(id="download-data"),
             dcc.Loading(
-                # [dbc.Alert("My Data", id="loading-overlay-output", className="h4 p-4 mt-3")],
                 [dcc.Store(id='data-file', storage_type='local', data = {'filename': '', 'data': '[]', 'hidden_columns':[]}),
                 html.Div(id='menu-data'),
                 html.Div(id='output-datatable', style={
                     'width': '100%',
-                    # 'height': '60px',
                     'textAlign': 'center',
                     'margin-top': '10px'
                 })],
@@ -100,7 +97,7 @@ app.layout = html.Div([
 
         dcc.Tab(label='Визуализация',children = [
 
-            dcc.Tabs(id = 'tabs', value = 'Лист 1', style = tabs_styles),
+            dcc.Tabs(id = 'tabs', value = 'Лист 1', className='sheet-tabs', style = tabs_styles),
             dcc.ConfirmDialog(
                 id="confirm-delete",
             )
@@ -279,4 +276,4 @@ register_all_callbacks(app)
 
 # running the server
 if __name__ == '__main__':
-    app.run(debug = True)
+    app.run(debug = False)

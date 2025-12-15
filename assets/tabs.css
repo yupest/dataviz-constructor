@@ -1,0 +1,70 @@
+.sheet-tabs .tabs {
+  display: flex !important;
+  align-items: stretch;
+  padding: 0;
+  gap: 0;
+}
+
+/* каждый tab в пределах sheet-tabs */
+.sheet-tabs .tab:not(.button-tab) {
+  flex: 1 1 0 !important;
+  box-sizing: border-box;
+  overflow: visible;
+  min-width: calc(var(--tab-icon-size, 32px)+20);
+  padding: 6px 10px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  position: relative;
+}
+
+/* псевдоэлемент иконки (использует CSS-переменную --tab-icon) */
+.sheet-tabs .tab:not(.button-tab)::before {
+  content: "";
+  display: inline-block;
+  width: var(--tab-icon-size, 32px);
+  height: var(--tab-icon-size, 32px);
+  background-image: var(--tab-icon);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  flex: 0 0 auto;
+  vertical-align: middle;
+}
+
+.sheet-tabs .tab:not(.button-tab) > span {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: 8px;
+}
+
+/* псевдоэлемент tooltip (использует CSS-переменную --tab-label) */
+.sheet-tabs .tab:not(.button-tab)::after {
+  content: var(--tab-label, "");
+  display: block;
+  white-space: nowrap;
+  visibility: hidden;
+  opacity: 0;
+  width: max-content;
+  background-color: black;
+  color: white;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 8px;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1000;
+  pointer-events: none;
+  transition: opacity 0.18s ease, visibility 0.18s;
+}
+
+.sheet-tabs .tab:not(.button-tab):hover::after {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}

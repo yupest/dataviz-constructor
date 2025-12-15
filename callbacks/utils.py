@@ -2,8 +2,6 @@ from dash import dcc, html
 import dash_bootstrap_components as dbc
 import dash_daq as daq
 
-# TODO: убрать константы в отдельный файл
-
 LIMIT_PAGE = 20
 
 type_diagrams = {'bar':'Столбчатая', 'line':'Линейная', 'dot':"Точечная", 'table':'Цветная таблица', 'pie':"Круговая", 'text':"Текст", 'wordcloud':"Облако слов"}
@@ -58,8 +56,8 @@ columnDefs = [
     },
     
 ]
-drop_sheet = dcc.Tab(id = {'index':'drop', 'type':'sheet'}, label = '❌', value = 'drop', style = tab_style, selected_style=tab_style)
-append_sheet = dcc.Tab(id = {'index':'add', 'type':'sheet'}, label = '➕', value = 'add', style = tab_style, selected_style=tab_style)
+drop_sheet = dcc.Tab(id = {'index':'drop', 'type':'sheet'}, className='button-tab', label = '❌', value = 'drop', style = tab_style, selected_style=tab_style)
+append_sheet = dcc.Tab(id = {'index':'add', 'type':'sheet'}, className='button-tab', label = '➕', value = 'add', style = tab_style, selected_style=tab_style)
 
 
 def get_btn_style(url):
@@ -69,6 +67,39 @@ def get_btn_style(url):
 
 style_btn_dashboard = get_btn_style('download')
 style_btn_dashboard['width'] = '100%'
+
+def create_vis_tab(name, id, chart_type=None, icon_size_px=24):
+    style = tab_style
+    style['--tab-label'] = f'"{name}"'
+    if chart_type:
+        style['--tab-icon'] = f"url('/assets/src/{chart_type}.png')"
+    style['--tab-icon-size'] = f"{icon_size_px}px"
+    tab = dcc.Tab(
+        label=name,
+        value=id,
+        id={'index': id, 'type': 'sheet'},
+        children=[
+            dbc.Container(
+                [dcc.Dropdown(
+                    id={'index': id, 'type' : 'chart_type'},
+                    placeholder='Выберите тип диаграммы',
+                    persistence='local',
+                    options=icons)],
+                style={'margin-top': 10}, fluid=True),
+            dbc.Container([
+                dbc.Row([
+                    dbc.Col([html.Div(id={'index': id, 'type' : 'menu'})], width={'size':4}),
+                    dbc.Col([dcc.Loading(html.Div(id={'index': id, 'type' : 'chart'}, style={'text-align':'left'}),
+                                         type='circle', style={'visibility':'visible', 'filter': 'blur(2px)', 'margin-top':'100px'})],
+                            width={'size':8})
+                ]),
+            ], fluid=True)
+        ],
+        style=style,
+        selected_style=style
+    )
+    return tab
+
 
 # Или модифицируем существующую функцию:
 def ensure_app_state(state, reset=False):
@@ -84,7 +115,6 @@ def ensure_app_state(state, reset=False):
     return state
 
 ######################################## menu getter functions ########################################
-# TODO: переместить эти функции в отдельный файл(ы)
 def get_menu_bar(list_color_cols, ind):
 
     return [html.Div([
