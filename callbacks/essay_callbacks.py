@@ -18,7 +18,6 @@ def register_essay_callbacks(app):
     )
     def set_order_list(update_essay, order, selected_rows, storage):
         data_order = [i for i in order if i in selected_rows]
-        print('ПОРЯДОК\n', selected_rows, '\n', data_order)
         if 'update-essay.n_clicks' == ctx.triggered[0]['prop_id'] and update_essay>0:
             storage['order_list'] = order
             
@@ -26,21 +25,12 @@ def register_essay_callbacks(app):
             
             for row in data_order:
                 sheet_id = row['id']
-                # essay_content.append(
-                #     html.Div([
-                #         html.H3(f"{sheet_name}", 
-                #                style={'borderBottom': '2px solid #007bff', 
-                #                      'paddingBottom': '10px',
-                #                      'marginTop': '30px'})
-                #     ], style={'marginBottom': '20px'})
-                # )
                 item = copy.deepcopy(storage['sheets'][sheet_id]['tab_content']["props"]['children'][1]["props"]['children'][0]["props"]['children'][1]['props']['children'][0]['props']['children'])
                 item['props']['id']['type'] = 'essay'
                 essay_content.append(
                     html.Div([item], style={'marginBottom': '30px'})
                 )
             
-            # print(storage['sheets'][sheet_id]['tab_content']["props"]['children'][1]["props"]['children'][0]["props"]['children'][1]['props']['children'][0]['props']['children'])
             return storage, essay_content
         return no_update, no_update
 
@@ -57,13 +47,6 @@ def register_essay_callbacks(app):
         
         if not essay_title:
             essay_title = "Вычислительное эссе"
-        
-        # if not order or not stored_data or 'sheets' not in stored_data:
-        #     return {
-        #         "content": f"<h1>{essay_title}</h1><p>Нет данных для отображения</p>",
-        #         "filename": f"{essay_title}.html",
-        #         "type": "text/html"
-        #     }
         
         html_content = f"""<!DOCTYPE html>
 <html>
@@ -296,7 +279,6 @@ def register_essay_callbacks(app):
 
         for i, content in enumerate(essay, 1):
             comp = content['props']['children'][0]['props']['children']
-            # print(comp)
             if ('type' in comp) and comp['type'] == 'Graph':
                 figure_data = comp['props']['figure']
                 container_id = f"plot-{i}"
@@ -339,16 +321,6 @@ def register_essay_callbacks(app):
                 try:
                     text_blocks = []
                     for item in comp:
-                        # if item['type'] == 'P':
-                        #     text = item['props']['children']
-                        #     text_style = '; '.join([f'{k}: {v}' for k,v in item['props']['style'].items()])
-                        #     text_blocks.append(f'''
-                        #     <div class="visualization">
-                        #         <div class="text-content" style = "{text_style}">
-                        #             {text}
-                        #         </div>
-                        #     </div>
-                        #     ''')
                         if item['type'] == 'Markdown':
                             markdown_text = item['props']['children']
                             md_content = md.markdown(markdown_text, extensions = [
@@ -378,7 +350,6 @@ def register_essay_callbacks(app):
                             </div>
                             ''')
                         elif item['type'] == 'Iframe':
-                            # print(item)
                             type_src = 'srcDoc' if 'srcDoc' in item['props'] else 'src'
                             iframe_content = item['props'].get(type_src, '')
                             text_blocks.append(f'''
@@ -396,7 +367,6 @@ def register_essay_callbacks(app):
                     </div>
                     '''
                 except Exception as e:
-                    print(f"Error processing content: {e}")
                     continue
         
         html_content += """

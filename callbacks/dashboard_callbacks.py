@@ -373,7 +373,6 @@ def register_dashboard_callbacks(app):
                 figures.append(create_plot_block(figure_data, i))
                 
             elif type_sheet == 'Div':
-                print(comp['props']['children'])
                 items = comp['props']['children']
             
                 if isinstance(items, dict) and ('type' in items) and items['type'] == 'DashWordcloud':

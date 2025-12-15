@@ -22,7 +22,7 @@ def parse_contents(contents, filename):
                 df_uploaded = pd.read_json(io.StringIO(decoded.decode('utf-8')))
 
         except Exception as e:
-            print(f'parse content for {filename}', e)
+            pass
 
     return df_uploaded
 
@@ -263,9 +263,7 @@ def register_data_callbacks(app):
             'hidden_columns': [],
             'filter_query': '',
             }
-            print("✅ storage сброшен")
         except Exception as e:
-            print(f"Data upload error: {e}")
             raise PreventUpdate
         return storage, build_data_view(df, filename)
     
@@ -292,40 +290,6 @@ def register_data_callbacks(app):
             return True, False
         else:
             return False, True
-
-    # @app.callback(Output('df-table', 'hidden_columns'),
-    #               Input('df-table', 'hidden_columns'),
-    #               State('data-file', 'data'))
-    # def change_hidden_columns(hidden_columns, data):
-    #     if data['data']!='[]':
-    #         df = pd.read_json(io.StringIO(data['data']), orient='records')
-    #         return list(set(hidden_columns)& set(df.columns)) if hidden_columns else []
-    #     return no_update
-    
-    # @app.callback(
-    #     Output('storage', 'data', allow_duplicate=True),
-    #     Input('df-table', 'hidden_columns'),
-    #     Input('df-table', 'filter_query'),
-    #     State('storage', 'data'),
-    #     prevent_initial_call=True
-    # )
-    # def sync_hidden_columns(hidden_columns, filter_query, storage):
-    #     if storage is None or not storage.get('data') or storage['data'].get('df') in [None, '[]']:
-    #         raise PreventUpdate
-
-    #     storage_data = storage['data']
-
-    #     try:
-    #         df = pd.read_json(io.StringIO(storage_data['df']), orient='records')
-    #     except Exception:
-    #         raise PreventUpdate
-
-    #     cols = list(df.columns)
-    #     allowed = [c for c in (hidden_columns or []) if c in cols]
-    #     storage_data['hidden_columns'] = allowed
-    #     storage['data'] = storage_data
-    #     storage['data']['filter_query'] = filter_query or ''
-    #     return storage
         
     @app.callback(Output('download-data', 'data'),
               Input('download-data-btn', 'n_clicks'),
@@ -355,24 +319,6 @@ def register_data_callbacks(app):
             return dcc.send_data_frame(df.to_csv, name+new+'csv', index = False)
         else:
             return no_update
-
-    # @app.callback(Output('data-file', 'data', allow_duplicate=True),
-    #           Input('df-table', 'data'),
-    #           State('df-table', 'hidden_columns'),
-    #           State('raw-data', 'data'),
-    #           prevent_initial_call = True)
-    # def set_table(new_data, hidden_columns, data):
-    #     if new_data and new_data!=[]:
-    #         hidden_columns = list(hidden_columns) if hidden_columns else []
-    #         if 'is_null' in hidden_columns:
-    #             hidden_columns.remove('is_null')
-    #             data['hidden_columns'] = hidden_columns
-    #         df = pd.read_json(io.StringIO(json.dumps(new_data)))
-    #         df['NA'] = (df.isna().any(axis=1) | (df == '').any(axis=1)).astype(int)
-    #         data['data'] = df.to_json(orient='records')
-    #         return data
-    #     else:
-    #         return no_update
     
     @app.callback(
         Output('storage', 'data', allow_duplicate=True),
@@ -393,10 +339,7 @@ def register_data_callbacks(app):
             df["NA"] = (df.isna().any(axis=1) | (df == "").any(axis=1)).astype(int)
             storage["data"]['df'] = df.to_json(orient="records")
             storage['data']['hidden_columns'] = hidden_columns
-            print("✅ Изменения сохранены в storage")
-            print(storage['data']['hidden_columns'])
         except Exception as e:
-            print("Ошибка при сохранении таблицы:", e)
             raise PreventUpdate
     
         return storage
