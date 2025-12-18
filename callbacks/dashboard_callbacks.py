@@ -1,6 +1,7 @@
 from dash import Input, Output, State
 from dash.exceptions import PreventUpdate
 import json
+import markdown as md
 
 html_template = '''<!DOCTYPE html>
 <html lang="en">
@@ -10,6 +11,9 @@ html_template = '''<!DOCTYPE html>
     <title>Smart Grid with Draggable Boxes</title>
     <script src="https://cdn.plot.ly/plotly-3.1.0-rc.0.min.js" charset="utf-8"></script>
     <script src="https://cdn.jsdelivr.net/gh/timdream/wordcloud2.js@gh-pages/src/wordcloud2.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.11.1/styles/default.min.css">
+    <script src="https://unpkg.com/@highlightjs/cdn-assets@11.11.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -80,6 +84,31 @@ html_template = '''<!DOCTYPE html>
             right: -5px;
             bottom: -5px;
             cursor: se-resize;
+        }
+        .markdown-content {
+            color: black;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        
+        .markdown-content h1, 
+        .markdown-content h2, 
+        .markdown-content h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        
+        .markdown-content p {
+            margin-bottom: 10px;
+        }
+        
+        .markdown-content ul, 
+        .markdown-content ol {
+            margin-left: 20px;
+            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -344,7 +373,6 @@ def register_dashboard_callbacks(app):
                 figures.append(create_plot_block(figure_data, i))
                 
             elif type_sheet == 'Div':
-                print(comp['props']['children'])
                 items = comp['props']['children']
             
                 if isinstance(items, dict) and ('type' in items) and items['type'] == 'DashWordcloud':
@@ -379,13 +407,25 @@ def register_dashboard_callbacks(app):
                     try:
                         text_blocks = []
                         for item in items:
-                            if item['type'] == 'P':
-                                print(item)
+                            # if item['type'] == 'P':
                                 
-                                text = item['props']['children']
-                                text_style = '; '.join([f'{k}: {v}' for k,v in item['props']['style'].items()])
-                                text_blocks.append(f'<p style = "color:black;{text_style}">{text}</p>')
-                                
+                            #     text = item['props']['children']
+                            #     text_style = '; '.join([f'{k}: {v}' for k,v in item['props']['style'].items()])
+                            #     text_blocks.append(f'<p style = "color:black;{text_style}">{text}</p>')
+                            if item['type'] == 'Markdown':
+                                markdown_text = item['props']['children']
+                                md_content = md.markdown(markdown_text, extensions = [
+                                                'fenced_code',      # Блоки кода с ```
+                                                'tables',           # Таблицы
+                                                'toc',              # Оглавление
+                                                'nl2br',            # Переносы строк
+                                                'sane_lists'        # Умные списки
+                                            ])
+                                text_blocks.append(f'''
+                                <div class="markdown-content">
+                                    {md_content}
+                                </div>
+                                ''')
                             elif item['type'] == 'Img':
                                 img = item['props']['src']
                                 figures.append(f'''
@@ -395,7 +435,6 @@ def register_dashboard_callbacks(app):
                                 </div>
                                 ''')
                             elif item['type'] == 'Iframe':
-                                print(item)
                                 type_src = 'srcDoc' if 'srcDoc' in item['props'] else 'src'
                                 iframe_content = item['props'].get(type_src, '')
                                 figures.append(f'''

@@ -1,33 +1,9 @@
-from dash import html, Input, Output, State
-from dash import ctx, no_update
+from dash import html, Input, Output, State, dcc
+from dash import ctx
 from dash.dependencies import MATCH
 
-# TODO: убрать стилевые константы в отдельный файл
-tab_style = {
-    'padding': '10px 10px',  # Универсальные отступы
-    'display': 'flex',
-    'alignItems': 'center',  # Вертикальное выравнивание содержимого
-    'justifyContent': 'center',  # Горизонтальное выравнивание
-    'textAlign': 'center',
-}
-custom_style_tab = {
-    'background-repeat': 'no-repeat',
-    'background-position': '10px center',
-    'background-size': '25px',
-    'padding-left': '35px' }
-
 def register_text_callbacks(app):
-    @app.callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-              Input({'index':MATCH, 'type':'name-text'},'value'),
-              prevent_initial_call=True)
-    def rename_sheet_text(name):
-        style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/text.png?raw=true')"}
-        if not name:
-            return no_update, style, style
-        else:
-            return name, style, style
+
         
     # Обработчики для загрузки изображений и файлов
     @app.callback(
@@ -56,14 +32,17 @@ def register_text_callbacks(app):
 
     @app.callback(Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
             Input({'index':MATCH, 'type':'textarea-example'}, 'value'),
-            Input({'index':MATCH, 'type':'size-slider-text'}, 'value'),
+            # Input({'index':MATCH, 'type':'size-slider-text'}, 'value'),
             Input({'index':MATCH, 'type':'iframe-code'}, 'value'), 
-            Input({'index':MATCH, 'type':'upload-image'}, 'contents'), prevent_initial_call=True
+            Input({'index':MATCH, 'type':'upload-image'}, 'contents'), 
+            Input({'index':MATCH, 'type':'sheet'}, 'value'),
+            prevent_initial_call=True
         )
-    def update_output(text, size, iframe_code, images_content):
+    def update_output(text, iframe_code, images_content, sheet):
         res = []
-        for p in text.splitlines():
-            res.append(html.P(p,style = {'font-size': f'{size}pt'}))
+        # for p in text.splitlines():
+        
+        res.append(dcc.Markdown(text))
             
         res_imgs = []
         if images_content:

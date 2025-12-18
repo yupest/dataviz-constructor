@@ -1,4 +1,4 @@
-from dash import dcc, Input, Output, no_update
+from dash import dcc, Input, State, Output, no_update
 import plotly.express as px
 from dash.dependencies import MATCH
 import pandas as pd
@@ -26,26 +26,13 @@ def register_barchart_callbacks(app):
     def update_disabled_top_slider(value):
         return value == []
 
-    @app.callback(Output({'index':MATCH, 'type':'sheet'},'label', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'sheet'},'style', allow_duplicate=True),
-              Output({'index':MATCH, 'type':'sheet'},'selected_style', allow_duplicate=True),
-              Input({'index':MATCH, 'type':'name-bar'},'value'),
-              # State({'index':MATCH, 'type':'sheet'},'label'),
-              prevent_initial_call=True)
-    def rename_sheet_bar(name):
-        print(name)
-        style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/bar.png?raw=true')"}
-        if not name:
-            return no_update, style, style
-        else:
-            return name, style, style
-
     @app.callback(Output({'index':MATCH, 'type':'value_filter-bar'}, 'options'),
-              Input('df-table','data'),
               Input({'index':MATCH, 'type':'filter-bar'}, 'value'),
+              State('storage','data'),
               prevent_initial_call=False)
-    def set_options_bar(data, filter_col):
-        df = pd.read_json(json.dumps(data), orient='records')
+    def set_options_bar(filter_col, storage):
+        data = storage['data']['df']
+        df = pd.read_json(data, orient='records')
         if not filter_col:
             return no_update
         return df[filter_col].unique()
@@ -54,16 +41,17 @@ def register_barchart_callbacks(app):
                    Input({'index':MATCH, 'type':'xaxis'},'value'),
                    Input({'index':MATCH, 'type':'yaxis'}, 'value'),
                    Input({'index':MATCH, 'type':'agg-bar'}, 'value'),
-                   Input({'index':MATCH, 'type':'name-bar'}, 'value'),
+                   Input({'index':MATCH, 'type':'name-chart'}, 'value'),
                    Input({'index':MATCH, 'type':'creation-top-bar'}, 'value'),
                    Input({'index':MATCH, 'type':'top-slider-bar'}, 'value'),
                    Input({'index':MATCH, 'type':'filter-bar'}, 'value'),
                    Input({'index':MATCH, 'type':'value_filter-bar'}, 'value'),
                    Input({'index':MATCH, 'type':'orientation'}, 'value'),
-                   Input('df-table','data'),
-                   Input('df-table','hidden_columns'),
+                   Input({'index':MATCH, 'type':'sheet'}, 'value'),
+                   Input('template', 'value'),
+                   State('storage','data'),
                    prevent_initial_call=True)
-    def make_bar(x_data, y_data, agg_data, barchart_name, creation_top, top_slider, filter_col, value_filter, orientation, data, hidden_columns):
+    def make_bar(x_data, y_data, agg_data, barchart_name, creation_top, top_slider, filter_col, value_filter, orientation, sheet, template, storage):
 
         if not x_data or not y_data:
             print('no', x_data, y_data)
@@ -72,7 +60,10 @@ def register_barchart_callbacks(app):
         ### dictionary for an aggregation ###
         d = {'sum': 'sum()', 'avg':'mean()', 'count': 'count()', 'countd': 'nunique()', 'min':'min()', 'max':'max()'}
 
-        df = pd.read_json(json.dumps(data), orient='records')
+        data = storage['data']['df']
+        hidden_columns = storage['data']['hidden_columns']
+        print(f'Скрытые колонки в барчарте {hidden_columns}')
+        df = pd.read_json(data, orient='records')
         
         cols = ['NA'] if 'NA' in df.columns else []
         cols += hidden_columns if hidden_columns else []
@@ -108,7 +99,7 @@ def register_barchart_callbacks(app):
             x = df_temp.index
             y = y_data[0] if len(y_data)==1 else y_data
 
-        bar_fig = px.bar(df_temp, x=x, y=y, labels={'y':y_axis,'x': x_data}, orientation = o)
+        bar_fig = px.bar(df_temp, x=x, y=y, labels={'y':y_axis,'x': x_data}, orientation = o, template = template)
         bar_fig.update_layout(
             title={
                 'text': barchart_name,

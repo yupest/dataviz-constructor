@@ -8,32 +8,16 @@ import dash_ag_grid as dag
 from callbacks.utils import *
 from callbacks import register_all_callbacks
 
+import plotly.io as pio
 
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.LUMEN, 'https://codepen.io/chriddyp/pen/bWLwgP.css' ], suppress_callback_exceptions=True)
+app = Dash(__name__, external_stylesheets=[dbc.themes.LUMEN, '/assets/bWLwgP.css' ], suppress_callback_exceptions=True)
 server = app.server
 
 app.layout = html.Div([
     dcc.Store(id="storage", storage_type="local"),
-    dcc.Store(id="essay-order", storage_type="local", data=[]),  # Хранилище порядка листов для эссе
     
     dbc.Row([
-        # Лого ИГУ (левое)
-        dbc.Col([
-            html.Div([
-                # html.Img(src='https://github.com/yupest/nto/blob/master/src/vis.png?raw=true', style={'width': '15%'}),
-                html.Img(
-                    src='https://isu.ru/export/sites/isu/ru/media/.galleries/images/isu_black.png',
-                    style={'width': '45%'}
-                )
-            ], style={
-                'display': 'flex',
-                'flexDirection': 'row',
-                'alignItems': 'center',
-                'justifyContent': 'flex-start',
-                'height': '100%'
-            })
-        ], width=3, style={'padding-left': '14px'}),
 
         # Центральный заголовок
         dbc.Col([
@@ -44,7 +28,7 @@ app.layout = html.Div([
                 'display': 'flex',
                 'flexDirection': 'row',
                 'alignItems': 'center',
-                'justifyContent': 'center',
+                'justifyContent': 'left',
                 'height': '100%'
             })
         ], width=6),
@@ -52,17 +36,28 @@ app.layout = html.Div([
         # Лого RSV (правое)
         dbc.Col([
             html.Div([
-                html.Img(
-                    src='https://static.tildacdn.com/tild6231-6235-4131-b239-313435643830/rsv_ntojunior_2024.svg',
-                    style={'width': '80%'}
-                )
+                html.Div([dcc.Dropdown(id = 'template', options = [{'label':i, 'value':i} for i in pio.templates], value = 'plotly', clearable = False, persistence='local', style = {'height': '38px'}),
+                          dbc.Tooltip("Тема проекта", is_open=False, target='template')], 
+                         style = {'width': '180px','paddingTop': '5px'}
+                        ),
+                dcc.Upload(
+                    id='upload-project',
+                    children=html.Div([html.Button('Загрузить проект', id = 'set-project', n_clicks=0, style=get_btn_style("up-loading")),
+                                       dbc.Tooltip("Можно загрузить проект до 5 мб.", is_open=False, target='upload-project')]
+                                      ),
+                    multiple=False,
+
+                ),
+                html.Button('Скачать проект', id='save-project', n_clicks=0, style=get_btn_style("download")),
+                dcc.Download(id="download-project")
             ], style={
                 'display': 'flex',
                 'alignItems': 'center',
                 'justifyContent': 'flex-end',
                 'height': '100%'
             })
-        ], width=3, style={'padding-right': '14px'})
+                
+        ], width=6, style={'padding-right': '14px'})
     ], align='center', style={'height': '100%', 'margin-top':'5px', 'margin-bottom':'5px'}),
     dcc.Tabs(id = 'tabs-menu', children = [dcc.Tab(label='Данные', children = [
             dbc.Container([
@@ -85,12 +80,10 @@ app.layout = html.Div([
             ),
             dcc.Download(id="download-data"),
             dcc.Loading(
-                # [dbc.Alert("My Data", id="loading-overlay-output", className="h4 p-4 mt-3")],
                 [dcc.Store(id='data-file', storage_type='local', data = {'filename': '', 'data': '[]', 'hidden_columns':[]}),
                 html.Div(id='menu-data'),
                 html.Div(id='output-datatable', style={
                     'width': '100%',
-                    # 'height': '60px',
                     'textAlign': 'center',
                     'margin-top': '10px'
                 })],
@@ -99,16 +92,17 @@ app.layout = html.Div([
                 type="circle",
             ),
 
-        ], fluid=True)], style = tab_style, selected_style=tab_style),
+        ], fluid=True)], 
+        style = {**tab_style, **custom_style_tab, 'background-image':"url('/assets/src/data-tab.png')"}, selected_style={**tab_style, **custom_style_tab, 'background-image':"url('/assets/src/data-tab.png')"}),
 
         dcc.Tab(label='Визуализация',children = [
 
-            dcc.Tabs(id = 'tabs', value = 'Лист 1', style = tabs_styles),
+            dcc.Tabs(id = 'tabs', value = 'Лист 1', className='sheet-tabs', style = tabs_styles),
             dcc.ConfirmDialog(
                 id="confirm-delete",
             )
 
-        ], style = tab_style, selected_style=tab_style),
+        ], style = {**tab_style, **custom_style_tab, 'background-image':"url('/assets/src/chart.png')"}, selected_style={**tab_style, **custom_style_tab, 'background-image':"url('/assets/src/chart.png')"}),
         dcc.Tab(label='Дашборд', id = 'tab-dashboard', children = [
             dbc.Container(dbc.Row([dbc.Col(dcc.Input(id = 'input-name-dashboard',type = 'text',
                                                      placeholder = 'Введите название Дашборда',
@@ -121,7 +115,7 @@ app.layout = html.Div([
                 dash_draggable.ResponsiveGridLayout(id = 'dashboard-items',gridCols = {'lg': 16, 'md': 12, 'sm': 8, 'xs': 4, 'xxs': 2})]
             ),
             dcc.Download(id="download-html")
-        ], style = tab_style, selected_style=tab_style),
+        ], style = {**tab_style, **custom_style_tab, 'background-image':"url('/assets/src/dashboard.png')"}, selected_style={**tab_style, **custom_style_tab, 'background-image':"url('/assets/src/dashboard.png')"}),
         
         # НОВАЯ ВКЛАДКА - ВЫЧИСЛИТЕЛЬНОЕ ЭССЕ
         dcc.Tab(label='Вычислительное эссе', id='tab-essay', children=[
@@ -210,11 +204,11 @@ app.layout = html.Div([
                 'overflow': 'hidden'  # Отключаем скролл у всего Row
             }),
             dcc.Download(id="download-essay")
-        ], style=tab_style, selected_style=tab_style),
+        ], style = {**tab_style, **custom_style_tab, 'background-image':"url('/assets/src/essay.png')"}, selected_style={**tab_style, **custom_style_tab, 'background-image':"url('/assets/src/essay.png')"}),
         dcc.Tab(id = 'show-help',
                 label = 'Справка', value = 'Справка',
-                style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/help.png?raw=true')"},
-                selected_style = {**tab_style, **custom_style_tab, 'background-image':"url('https://github.com/yupest/nto/blob/master/src/help.png?raw=true')"},
+                style = {**tab_style, **custom_style_tab, 'background-image':"url('/assets/src/help.png')"},
+                selected_style = {**tab_style, **custom_style_tab, 'background-image':"url('/assests/help.png')"},
                 children = dbc.Container([html.Br(),
                                           html.P('''С помощью платформы визуализации данных можно загружать, обрабатывать, анализировать и наглядно представлять информацию в виде графиков, диаграмм и интерактивных дашбордов.
                                                  Каждая вкладка предоставляет различный функционал по каждому этапу:'''),
@@ -234,10 +228,8 @@ app.layout = html.Div([
                                           html.Button('❌', style = {'margin':'10px 0px 5px 2px','disabled':True}), ' Удаление текущего листа', html.Br(),
                                           'Результат визуализации с каждого листа добавляется автоматически в дашборд',html.Br(),
                                           html.H5('Дашборд'),
-                                          'Каждый блок с визуализацией можно перемещать за верхний край и масштабировать за правый нижний угол',html.Br(),
-                                          html.Button('Введите название дашборда', style = {'margin':'10px 0px 5px 2px','disabled':True}), ' Задаёт название для дашборда, в том числе для локального файла при сохранении.',html.Br(),
-                                          html.Button('Скачать html-дашборд',  style = {**get_btn_style('download'), 'margin':'10px 0px 5px 2px','disabled':True}), 
-                                          ' Скачать дашборд в формате html: все визуализации (кроме облака слов) выгружаются в локальный файл.',
+                                          'Каждый блок с визуализацией можно перемещать за верхний край и масштабировать за левый нижний угол',html.Br(),
+                                          html.Button('Скачать html-дашборд',  style = {**get_btn_style('download'), 'margin':'10px 0px 5px 2px','disabled':True}), ' Скачать дашборд в формате html: все визуализации (кроме облака слов) выгружаются в локальный файл.', html.Br(),
                                           html.H5('Вычислительное эссе'),
                                           'Каждый лист в колонке ', html.B('Порядок листов в эссе'), ''' можно перетаскивать для изменения порядка отображения
                                           и включать/выключать видимость листов с помощью чекбоксов (по умолчанию все листы скрыты).''',html.Br(),
@@ -247,10 +239,37 @@ app.layout = html.Div([
                                           html.Button('Введите название эссе', style = {'margin':'10px 0px 5px 2px','disabled':True}), ' Задаёт название для эссе, в том числе для локального файла при сохранении.',html.Br(),
                                           html.Button('Скачать html-эссе',  style = {**get_btn_style('download'),'disabled':True}), 
                                           ' Скачать вычислительное эссе в формате html: все отображаемые в эссе визуализации (кроме облака слов) выгружаются в локальный файл.',html.Br(),
-                                          'Перед скачиванием необходимо обязательно применить изменения!',html.Br(),
+                                          'Перед скачиванием необходимо обязательно применить изменения!'
 
-                                          ], fluid = True, style = {'width':'90%'}))
-    ], style = tabs_styles)
+                                          ], fluid = True, style = {'width':'90%', 'backgroundColor':'white'}))
+    ], style = tabs_styles),
+    html.Br(),html.Br(),html.Br(),
+    html.Footer([
+        html.Div([
+            html.Img(
+                src='https://isu.ru/export/sites/isu/ru/media/.galleries/images/isu_black.png',
+                style={'width': '15%'}
+            ),
+            html.Img(
+                src='https://static.tildacdn.com/tild6231-6235-4131-b239-313435643830/rsv_ntojunior_2024.svg',
+                style={'width': '30%'}
+            )
+        ], style={
+            'flexDirection': 'row',
+            'alignItems': 'center',
+            'justifyContent': 'flex-start',
+            'height': '100%',
+            'width':'50%',
+            'backgroundColor':'white',
+        })
+    ],  style={'display': 'flex',
+        'flexDirection': 'row',
+        'alignItems': 'center',
+        'position': 'fixed',
+        'bottom': '0',
+        'left': '8px',
+        'width': '100%',
+        'zIndex': -100}),
 ])
 
 register_all_callbacks(app)        
