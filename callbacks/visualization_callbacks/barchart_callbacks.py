@@ -2,7 +2,7 @@ from dash import dcc, Input, State, Output, no_update
 import plotly.express as px
 from dash.dependencies import MATCH
 import pandas as pd
-import json
+import io
 
 # TODO: убрать стилевые константы в отдельный файл
 tab_style = {
@@ -32,7 +32,7 @@ def register_barchart_callbacks(app):
               prevent_initial_call=False)
     def set_options_bar(filter_col, storage):
         data = storage['data']['df']
-        df = pd.read_json(data, orient='records')
+        df = pd.read_json(io.StringIO(data), orient='records')
         if not filter_col:
             return no_update
         return df[filter_col].unique()
@@ -54,15 +54,12 @@ def register_barchart_callbacks(app):
     def make_bar(x_data, y_data, agg_data, barchart_name, creation_top, top_slider, filter_col, value_filter, orientation, sheet, template, storage):
 
         if not x_data or not y_data:
-            print('no', x_data, y_data)
             return []
-        # print('ready barchart', ctx.triggered)
         ### dictionary for an aggregation ###
         d = {'sum': 'sum()', 'avg':'mean()', 'count': 'count()', 'countd': 'nunique()', 'min':'min()', 'max':'max()'}
 
         data = storage['data']['df']
         hidden_columns = storage['data']['hidden_columns']
-        print(f'Скрытые колонки в барчарте {hidden_columns}')
         df = pd.read_json(data, orient='records')
         
         cols = ['NA'] if 'NA' in df.columns else []
@@ -98,8 +95,7 @@ def register_barchart_callbacks(app):
 
             x = df_temp.index
             y = y_data[0] if len(y_data)==1 else y_data
-
-        bar_fig = px.bar(df_temp, x=x, y=y, labels={'y':y_axis,'x': x_data}, orientation = o, template = template)
+        bar_fig = px.bar(df_temp.reset_index(), x=x_data, y=y, labels={'y':y_axis,'x': x_data}, orientation = o, template = template)
         bar_fig.update_layout(
             title={
                 'text': barchart_name,
