@@ -3,7 +3,7 @@ from dash.exceptions import PreventUpdate
 from dash.dependencies import MATCH
 from dash_holoniq_wordcloud import DashWordcloud
 import pandas as pd
-import json
+import io
 
 
 def register_wordcloud_callbacks(app):
@@ -31,12 +31,12 @@ def register_wordcloud_callbacks(app):
         data = storage['data']['df']
         hidden_columns = storage['data']['hidden_columns']
         
-        df = pd.read_json(json.dumps(data), orient='records')
+        df = pd.read_json(io.StringIO(data), orient='records')
         cols = ['NA'] if 'NA' in df.columns else []
         cols += hidden_columns if hidden_columns else []
         df = df.drop(columns = cols)
         
-        if column_count:
+        if column_count and column_count != column:
             df = df[[column, column_count]].drop_duplicates()
 
         if explode:
