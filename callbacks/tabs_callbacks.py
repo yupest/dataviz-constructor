@@ -230,16 +230,22 @@ def register_tabs_callbacks(app):
         df = df.drop(columns = cols)
 
         type_cols = dict()
+        list_color_cols_default = [{'options':{'label':html.Span(['Названия метрик'], style={'color':'Blue'}), 'value': 'Названия метрик'}, 'type': 'object'},
+                           {'options':{'label':html.Span(['Значения метрик'], style={'color':'Green'}), 'value': 'Значения метрик'},'type': 'float'}
+                           ]
+        list_color_cols = []
         for col in df.columns:
-            if df[col].dtype == 'object':
-                type_cols[col] = {'style': {'color':'Blue'}, 'type':'object'}
-            elif df[col].dtype == 'int64' and len(df[col].unique())<30:
-                type_cols[col] = {'style': {'color':'Orange'}, 'type':'discrete'}
+            if col in storage['data']['columns']['object']:
+                type_cols = {'style': {'color':'Blue'}, 'type':'object'}
+            elif col in storage['data']['columns']['discrete']:
+                type_cols = {'style': {'color':'Orange'}, 'type':'discrete'}
             else:
-                type_cols[col] = {'style': {'color':'Green'}, 'type':df[col].dtype}
-
-        list_color_cols = [{'options':{'label':html.Span([i], style=type_cols[i]['style']), 'value': i},
-                           'type': type_cols[i]['type']} for i in df.columns]
+                type_cols = {'style': {'color':'Green'}, 'type':df[col].dtype}
+            list_color_cols.append({'options':{'label':html.Span([col], style=type_cols['style']), 'value': col},
+                           'type': type_cols['type']})
+        
+        if chart_type not in ['wordcloud']:
+            list_color_cols = list_color_cols_default+list_color_cols
 
         match chart_type:
             case 'bar': 
@@ -256,5 +262,6 @@ def register_tabs_callbacks(app):
                 chart = get_menu_wordcloud(list_color_cols, current_index)
             case'text':
                 chart = get_menu_text(current_index)
+        # chart+= [html.Button('Обновить визуализацию', id =  {'index':current_index, 'type':'upd-chart'}, n_clicks=0, style=get_btn_style("up-loading"))]
         style = {**tab_style, **custom_style_tab, '--tab-icon': f"url('/assets/src/{chart_type}.png')", '--tab-icon-size': '24px'}
         return chart, style, style   
