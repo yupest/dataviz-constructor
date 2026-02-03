@@ -1,7 +1,7 @@
 {
   "name": "dataviz_constructor",
   "productName": "Dataviz constructor",
-  "version": "1.1.1",
+  "version": "2.0.0",
   "description": "Проект датавиз-конструктор предназначен для обработки и анализа данных через визуализацию. Итогом работы является дашборд или вычислительное эссе.",
   "main": "main.js",
   "scripts": {
