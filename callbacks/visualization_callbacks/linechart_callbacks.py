@@ -15,6 +15,9 @@ def register_linechart_callbacks(app):
         
         if not filter_col:
             return no_update
+        if filter_col == 'Названия метрик':
+            return storage['data']['columns']['numeric']+storage['data']['columns']['discrete']
+        
         return df[filter_col].unique()
 
     @app.callback(Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
@@ -43,14 +46,25 @@ def register_linechart_callbacks(app):
         cols += hidden_columns if hidden_columns else []
         df = df.drop(columns = cols)
 
+        measure_names = storage['data']['columns']['numeric']+storage['data']['columns']['discrete']
         if filter_col and value_filter:
-            df = df.loc[df[filter_col].isin(value_filter)]
+            if filter_col == 'Названия метрик':
+                measure_names = value_filter
+            else:
+                df = df.loc[df[filter_col].isin(value_filter)]
 
-        nnn = df.groupby(x_data)[y_data]
-        r = {'nnn':nnn}
-        exec('nnn = nnn.'+d[agg_data], r)
+        if x_data == 'Названия метрик' and y_data[0] == 'Значения метрик':
+            y_data = f'{agg_data}(Значения метрик)'
+            group_data = df[measure_names]
+            r = {'agg_result':group_data}
+            exec(f'agg_result = agg_result.{d[agg_data]}.to_frame().reset_index().rename(columns = {{"index":"Названия метрик", 0:"{y_data}"}})', r)
+        else:
+            group_data = df.groupby(x_data)[y_data]
+            r = {'agg_result':group_data}
+            exec(f'agg_result = agg_result.{d[agg_data]}.reset_index()', r)
+            
 
-        line_fig = px.line(r['nnn'], x=r['nnn'].index, y=y_data, color_discrete_sequence=px.colors.qualitative.Plotly, template = template)
+        line_fig = px.line(r['agg_result'], x=x_data, y=y_data, color_discrete_sequence=px.colors.qualitative.Plotly, template = template)
         line_fig.update_layout(
             title={
                 'text': linechart_name,

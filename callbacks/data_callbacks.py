@@ -27,7 +27,7 @@ def parse_contents(contents, filename):
     return df_uploaded
 
 # ========== Отдельная функция для сборки вёрстки ==========
-def build_data_view(df, filename, hidden_columns = [], filter_query = ''):
+def build_data_view(df, filename, object_list, discrete_list, num_list, hidden_columns = [], filter_query = ''):
     """Создает меню, таблицу данных и таблицу статистики"""
     # --- меню ---
     menu = html.Div([
@@ -116,16 +116,16 @@ def build_data_view(df, filename, hidden_columns = [], filter_query = ''):
                            ]
                 )
     # --- таблицы статистики ---
-    object_list = []
-    discrete_list = []
-    num_list = []
-    for col in df.columns:
-        if df[col].dtype == 'object':
-            object_list.append(col)
-        elif df[col].dtype == 'int64' and len(df[col].unique())<50:
-            discrete_list.append(col)
-        else:
-            num_list.append(col)
+    # object_list = []
+    # discrete_list = []
+    # num_list = []
+    # for col in df.columns:
+    #     if df[col].dtype == 'object':
+    #         object_list.append(col)
+    #     elif df[col].dtype == 'int64' and len(df[col].unique())<30:
+    #         discrete_list.append(col)
+    #     else:
+    #         num_list.append(col)
 
     style_num_columns = [{
         'if': {'column_id': i},
@@ -253,19 +253,33 @@ def register_data_callbacks(app):
                 return no_update, html.P("❌ Не удалось прочитать файл. Поддерживаемые форматы: CSV, XLSX, JSON.")
 
             cols_exist = df.columns.to_list()
+
+            object_list = []
+            discrete_list = []
+            num_list = []
+            for col, data_type in df.dtypes.items():
+                if data_type == 'object':
+                    object_list.append(col)
+                elif data_type == 'int64' and len(df[col].unique())<30:
+                    discrete_list.append(col)
+                else:
+                    num_list.append(col)
+
             df['NA'] = (df.isna().any(axis=1) | (df == '').any(axis=1)).astype(int)
             df = df[['NA']+cols_exist]
 
             storage = ensure_app_state(storage, True)
             storage['data'] = {
-            'filename': filename,
-            'df': df.to_json(orient='records'),
-            'hidden_columns': [],
-            'filter_query': '',
+                'filename': filename,
+                'df': df.to_json(orient='records'),
+                'hidden_columns': [],
+                'filter_query': '',
+                'columns':{'object':object_list, 'discrete':discrete_list, 'numeric':num_list}
             }
         except Exception as e:
+            print(e)
             raise PreventUpdate
-        return storage, build_data_view(df, filename)
+        return storage, build_data_view(df, filename, object_list, discrete_list, num_list)
     
     ######################################## processing the data table ########################################
     @app.callback(Output('output-datatable', 'children', allow_duplicate=True),
@@ -278,7 +292,8 @@ def register_data_callbacks(app):
         df = pd.read_json(io.StringIO(storage['data']['df']), orient='records')
         hidden_columns = storage['data']['hidden_columns']
         filter_query = storage['data']['filter_query']
-        return build_data_view(df, filename, hidden_columns, filter_query = storage['data']['filter_query'])
+        columns = storage['data']['columns']
+        return build_data_view(df, filename, columns['object'], columns['discrete'], columns['numeric'], hidden_columns, filter_query = storage['data']['filter_query'])
 
     @app.callback(Output('show-data', 'hidden', allow_duplicate=True),
                   Output('show-describe', 'hidden', allow_duplicate=True),

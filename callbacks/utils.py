@@ -138,6 +138,8 @@ def get_menu_bar(list_color_cols, ind):
                          },
                      value='sum',
                      persistence='local'),
+        
+        dcc.Checklist(id = {'index':ind,'type':'barmode'}, options = {'group':'Стековая диаграмма'},  persistence='local'),
         dcc.Checklist(options = {'h':'Горизонтальная диаграмма'}, id = {'index':ind,'type':'orientation'}, persistence='local'),
         dcc.Checklist(options = {'top':'Создать топ'}, id = {'index':ind, 'type':'creation-top-bar'}, persistence='local'),
         dcc.Slider(min=1, max=20, step=1, value=20, id={'index':ind, 'type':'top-slider-bar'}, marks=None, disabled = True,

@@ -37,8 +37,13 @@ def register_table_callbacks(app):
     def set_options_table(filter_col, storage):
         data = storage['data']['df']
         df = pd.read_json(data, orient='records')
+        
         if not filter_col:
             return no_update
+
+        if filter_col == 'Названия метрик':
+            return storage['data']['columns']['numeric']+storage['data']['columns']['discrete']
+        
         return df[filter_col].unique()
 
     @app.callback(Output({'index':MATCH, 'type':'chart'}, 'children', allow_duplicate=True),
@@ -62,8 +67,12 @@ def register_table_callbacks(app):
         cols = ['NA'] if 'NA' in df.columns else []
         cols += hidden_columns if hidden_columns else []
         df = df.drop(columns = cols)
+        measure_names = storage['data']['columns']['numeric']+storage['data']['columns']['discrete']
         if filter_col and value_filter:
-            df = df.loc[df[filter_col].isin(value_filter)]
+            if filter_col == 'Названия метрик':
+                measure_names = value_filter
+            else:
+                df = df.loc[df[filter_col].isin(value_filter)]
 
         if correlation:
             cols = df.columns[np.array([df[i].dtype != 'object' for i in df.columns])].tolist()
@@ -73,14 +82,26 @@ def register_table_callbacks(app):
             ### dictionary for an aggregation ###
             d = {'sum': 'sum()', 'avg':'mean()', 'count': 'count()', 'countd': 'nunique()', 'min':'min()', 'max':'max()'}
 
-            if not all([x_data, y_data, z_data]):
+            if not all([x_data, y_data, z_data]) and x_data==y_data:
                 return []
 
-            nnn = df.groupby([x_data, y_data])[z_data]
-            r = {'nnn':nnn}
-            exec('nnn = nnn.'+d[agg_data], r)
+            if y_data == 'Названия метрик':
+                x_data, y_data = y_data, x_data
 
-            df_temp = r['nnn'].reset_index().pivot(index=x_data, columns=y_data, values=z_data)
+            if x_data == 'Названия метрик' and z_data == 'Значения метрик':
+                group_data = df.groupby(y_data)[measure_names]
+                r = {'agg_result':group_data}
+                exec(f'agg_result = agg_result.{d[agg_data]}', r)
+                df_temp = r['agg_result']
+                df_temp.index = df_temp.index.astype('str')
+            else:
+                df[[x_data, y_data]] = df[[x_data, y_data]].astype(str)
+                group_data = df.groupby([x_data, y_data])[z_data]
+                r = {'agg_result':group_data}
+                exec('agg_result = agg_result.'+d[agg_data], r)
+
+                df_temp = r['agg_result'].reset_index().pivot(index=x_data, columns=y_data, values=z_data)
+
             table_chart = px.imshow(df_temp.round(3), text_auto=True, zmax = df_temp.stack().quantile(0.75), zmin = df_temp.min().min(), aspect="auto", template = template)
 
         table_chart.update_layout(
